@@ -13,14 +13,17 @@ class Api::V1::Accounts::Conversations::AssignmentsController < Api::V1::Account
   private
 
   def set_agent
-    resource = Conversations::AssignmentService.new(
-      conversation: @conversation,
-      assignee_id: params[:assignee_id],
-      assignee_type: params[:assignee_type]
-    ).perform
+  resource = Conversations::AssignmentService.new(
+    conversation: @conversation,
+    assignee_id: params[:assignee_id],
+    assignee_type: params[:assignee_type],
+    actor: Current.user
+  ).perform
 
-    render_agent(resource)
-  end
+  render_agent(resource)
+rescue Conversations::AssignmentService::AssignmentError => e
+  render_could_not_create_error(e.message)
+end
 
   def render_agent(resource)
     case resource
