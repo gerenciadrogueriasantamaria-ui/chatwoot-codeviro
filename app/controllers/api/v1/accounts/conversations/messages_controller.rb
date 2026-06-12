@@ -1,5 +1,6 @@
 class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::Conversations::BaseController
   before_action :ensure_api_inbox, only: :update
+  before_action :ensure_current_user_can_reply, only: :create
 
   def index
     @messages = message_finder.perform
@@ -56,6 +57,13 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
 
   private
 
+def ensure_current_user_can_reply
+  return unless Current.user
+  return if @conversation.assignee_id == Current.user.id
+
+  render json: { error: 'Solo el agente asignado puede responder esta conversación' }, status: :forbidden
+end
+  
   def message
     @message ||= @conversation.messages.find(permitted_params[:id])
   end
