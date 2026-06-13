@@ -206,8 +206,14 @@ export default {
     inbox() {
       return this.$store.getters['inboxes/getInbox'](this.inboxId);
     },
+    isConversationAssignedToCurrentUser() {
+      return this.currentChat?.meta?.assignee?.id === this.currentUser?.id;
+    },
     messagePlaceHolder() {
       if (this.isEditorDisabled) {
+        if (!this.isOnPrivateNote && !this.isConversationAssignedToCurrentUser) {
+          return 'Asígnate esta conversación para responder';
+        }
         if (this.isAWhatsAppChannel) {
           return this.$t('CONVERSATION.FOOTER.MESSAGING_RESTRICTED_WHATSAPP');
         }
@@ -438,11 +444,15 @@ export default {
       return !this.showAudioRecorderEditor && !this.copilot.isActive.value;
     },
     isEditorDisabled() {
-      return (
+      const isPublicReplyBlocked =
+        !this.isOnPrivateNote && !this.isConversationAssignedToCurrentUser;
+
+      const isMessagingWindowBlocked =
         (this.isAWhatsAppChannel || this.isAPIInbox) &&
         !this.isOnPrivateNote &&
-        !this.currentChat.can_reply
-      );
+        !this.currentChat.can_reply;
+
+      return isPublicReplyBlocked || isMessagingWindowBlocked;
     },
   },
   watch: {
