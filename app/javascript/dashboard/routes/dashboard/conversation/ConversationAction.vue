@@ -79,23 +79,41 @@ export default {
       }
       return this.teams;
     },
-    assignedAgent: {
+        assignedAgent: {
       get() {
         return this.currentChat.meta.assignee;
       },
       set(agent) {
+        const previousAgent = this.currentChat.meta.assignee;
         const agentId = agent ? agent.id : null;
+        const conversationId = this.currentChat.id;
+
         this.$store.dispatch('setCurrentChatAssignee', {
-          conversationId: this.currentChat.id,
+          conversationId,
           assignee: agent,
         });
+
         this.$store
           .dispatch('assignAgent', {
-            conversationId: this.currentChat.id,
+            conversationId,
             agentId,
           })
           .then(() => {
             useAlert(this.$t('CONVERSATION.CHANGE_AGENT'));
+          })
+          .catch(error => {
+            this.$store.dispatch('setCurrentChatAssignee', {
+              conversationId,
+              assignee: previousAgent,
+            });
+
+            this.$store.dispatch('getConversation', conversationId);
+
+            const message =
+              error?.response?.data?.error ||
+              'No se pudo asignar la conversación';
+
+            useAlert(message);
           });
       },
     },
