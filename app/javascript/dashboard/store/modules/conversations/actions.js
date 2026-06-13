@@ -208,7 +208,7 @@ const actions = {
     }
   },
 
-  assignAgent: async ({ dispatch }, { conversationId, agentId }) => {
+    assignAgent: async ({ dispatch }, { conversationId, agentId }) => {
     try {
       const response = await ConversationApi.assignAgent({
         conversationId,
@@ -219,7 +219,7 @@ const actions = {
         assignee: response.data,
       });
     } catch (error) {
-      // Handle error
+      throw error;
     }
   },
 
