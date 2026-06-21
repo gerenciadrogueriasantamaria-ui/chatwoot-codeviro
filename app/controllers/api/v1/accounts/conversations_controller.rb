@@ -115,14 +115,16 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def update_last_seen
-    Notification::MarkConversationReadService.new(user: Current.user, account: Current.account, conversation: @conversation).perform
-    return update_last_seen_on_conversation(DateTime.now.utc, true) if assignee? && @conversation.assignee_unread_messages.any?
-    return update_last_seen_on_conversation(DateTime.now.utc, false) if !assignee? && @conversation.unread_messages.any?
+  auto_assign_conversation_on_view
 
-    return unless should_update_last_seen?
+  Notification::MarkConversationReadService.new(user: Current.user, account: Current.account, conversation: @conversation).perform
+  return update_last_seen_on_conversation(DateTime.now.utc, true) if assignee? && @conversation.assignee_unread_messages.any?
+  return update_last_seen_on_conversation(DateTime.now.utc, false) if !assignee? && @conversation.unread_messages.any?
 
-    update_last_seen_on_conversation(DateTime.now.utc, assignee?)
-  end
+  return unless should_update_last_seen?
+
+  update_last_seen_on_conversation(DateTime.now.utc, assignee?)
+end
 
   def unread
     last_incoming_message = @conversation.messages.incoming.last
