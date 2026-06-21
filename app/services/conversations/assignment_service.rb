@@ -1,5 +1,5 @@
 class Conversations::AssignmentService
-  MAX_ACTIVE_ASSIGNMENTS = 3
+  MAX_ACTIVE_ASSIGNMENTS = 5
   ACTIVE_ASSIGNMENT_STATUSES = %i[open pending snoozed].freeze
 
   class AssignmentError < StandardError; end
@@ -60,6 +60,7 @@ class Conversations::AssignmentService
 
   def ensure_actor_can_manage_existing_assignment!
     return if actor.blank?
+    return if actor_administrator?
     return if conversation.assignee_id.blank?
     return if conversation.assignee_id == actor.id
 
@@ -67,6 +68,7 @@ class Conversations::AssignmentService
   end
 
   def ensure_conversation_available_for!(new_assignee)
+    return if actor_administrator?
     return if conversation.assignee_id.blank?
     return if conversation.assignee_id == new_assignee.id
 
@@ -74,6 +76,8 @@ class Conversations::AssignmentService
   end
 
   def ensure_assignee_has_capacity!(new_assignee)
+    return if account_user_for(new_assignee)&.administrator?
+
     active_count = conversation.account.conversations
                                .where(assignee_id: new_assignee.id, status: ACTIVE_ASSIGNMENT_STATUSES)
                                .where.not(id: conversation.id)
@@ -81,7 +85,17 @@ class Conversations::AssignmentService
 
     return if active_count < MAX_ACTIVE_ASSIGNMENTS
 
-    raise AssignmentError, 'El agente ya tiene 3 conversaciones activas asignadas'
+    raise AssignmentError, 'El agente ya tiene 5 conversaciones activas asignadas'
+  end
+
+  def actor_administrator?
+    return false if actor.blank?
+
+    account_user_for(actor)&.administrator?
+  end
+
+  def account_user_for(user)
+    conversation.account.account_users.find_by(user_id: user.id)
   end
 
   def assignee
