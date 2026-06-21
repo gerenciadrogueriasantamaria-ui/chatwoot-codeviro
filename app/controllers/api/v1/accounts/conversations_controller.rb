@@ -34,7 +34,9 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
                                 .per(ATTACHMENT_RESULTS_PER_PAGE)
   end
 
-  def show; end
+  def show
+  auto_assign_conversation_on_view
+  end
 
   def create
     ActiveRecord::Base.transaction do
@@ -88,7 +90,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     else
       @status = @conversation.toggle_status
     end
-    assign_conversation if should_assign_conversation?
+    assign_conversation if 
   end
 
   def pending_to_open_by_bot?
@@ -98,7 +100,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def should_assign_conversation?
-    @conversation.status == 'open' && Current.user.is_a?(User) && Current.user&.agent?
+  @conversation.status == 'open' && Current.user.is_a?(User) && Current.account_user&.agent?
   end
 
   def toggle_priority
@@ -146,6 +148,18 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
 
   private
 
+  def auto_assign_conversation_on_view
+  return unless should_auto_assign_conversation_on_view?
+
+  assign_conversation
+  end
+
+def should_auto_assign_conversation_on_view?
+  Current.user.is_a?(User) &&
+    Current.account_user&.agent? &&
+    @conversation.assignee_id.blank?
+end
+
   def permitted_update_params
     # TODO: Move the other conversation attributes to this method and remove specific endpoints for each attribute
     params.permit(:priority)
@@ -183,9 +197,14 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def assign_conversation
-    @conversation.assignee = current_user
-    @conversation.save!
-  end
+  Conversations::AssignmentService.new(
+    conversation: @conversation,
+    assignee_id: current_user.id,
+    actor: Current.user
+  ).perform
+rescue Conversations::AssignmentService::AssignmentError
+  nil
+end
 
   def conversation
     @conversation ||= Current.account.conversations.find_by!(display_id: params[:id])
