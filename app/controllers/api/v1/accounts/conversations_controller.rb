@@ -35,7 +35,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def show
-  auto_assign_conversation_on_view
+    auto_assign_conversation_on_view
   end
 
   def create
@@ -90,7 +90,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     else
       @status = @conversation.toggle_status
     end
-    assign_conversation if 
+    assign_conversation if should_assign_conversation?
   end
 
   def pending_to_open_by_bot?
@@ -100,7 +100,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def should_assign_conversation?
-  @conversation.status == 'open' && Current.user.is_a?(User) && Current.account_user&.agent?
+    @conversation.status == 'open' && Current.user.is_a?(User) && Current.account_user&.agent?
   end
 
   def toggle_priority
@@ -115,15 +115,10 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def update_last_seen
-    # High-traffic accounts generate excessive DB writes when agents frequently switch between conversations.
-    # Throttle last_seen updates to once per hour when there are no unread messages to reduce DB load.
-    # Always update immediately if there are unread messages to maintain accurate read/unread state.
-    # Visiting a conversation should clear any unread inbox notifications for this conversation.
     Notification::MarkConversationReadService.new(user: Current.user, account: Current.account, conversation: @conversation).perform
     return update_last_seen_on_conversation(DateTime.now.utc, true) if assignee? && @conversation.assignee_unread_messages.any?
     return update_last_seen_on_conversation(DateTime.now.utc, false) if !assignee? && @conversation.unread_messages.any?
 
-    # No unread messages - apply throttling to limit DB writes
     return unless should_update_last_seen?
 
     update_last_seen_on_conversation(DateTime.now.utc, assignee?)
@@ -149,19 +144,18 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   private
 
   def auto_assign_conversation_on_view
-  return unless should_auto_assign_conversation_on_view?
+    return unless should_auto_assign_conversation_on_view?
 
-  assign_conversation
+    assign_conversation
   end
 
-def should_auto_assign_conversation_on_view?
-  Current.user.is_a?(User) &&
-    Current.account_user&.agent? &&
-    @conversation.assignee_id.blank?
-end
+  def should_auto_assign_conversation_on_view?
+    Current.user.is_a?(User) &&
+      Current.account_user&.agent? &&
+      @conversation.assignee_id.blank?
+  end
 
   def permitted_update_params
-    # TODO: Move the other conversation attributes to this method and remove specific endpoints for each attribute
     params.permit(:priority)
   end
 
@@ -173,20 +167,15 @@ end
     updates = { agent_last_seen_at: last_seen_at }
     updates[:assignee_last_seen_at] = last_seen_at if update_assignee.present?
 
-    # rubocop:disable Rails/SkipsModelValidations
     @conversation.update_columns(updates)
-    # rubocop:enable Rails/SkipsModelValidations
 
     ::Conversations::UnreadCounts::Notifier.new(@conversation).perform
   end
 
   def should_update_last_seen?
-    # Update if at least one relevant timestamp is older than 1 hour or not set
-    # This prevents redundant DB writes when agents repeatedly view the same conversation
     agent_needs_update = @conversation.agent_last_seen_at.blank? || @conversation.agent_last_seen_at < 1.hour.ago
     return agent_needs_update unless assignee?
 
-    # For assignees, check both timestamps - update if either is old
     assignee_needs_update = @conversation.assignee_last_seen_at.blank? || @conversation.assignee_last_seen_at < 1.hour.ago
     agent_needs_update || assignee_needs_update
   end
@@ -197,14 +186,14 @@ end
   end
 
   def assign_conversation
-  Conversations::AssignmentService.new(
-    conversation: @conversation,
-    assignee_id: current_user.id,
-    actor: Current.user
-  ).perform
-rescue Conversations::AssignmentService::AssignmentError
-  nil
-end
+    Conversations::AssignmentService.new(
+      conversation: @conversation,
+      assignee_id: current_user.id,
+      actor: Current.user
+    ).perform
+  rescue Conversations::AssignmentService::AssignmentError
+    nil
+  end
 
   def conversation
     @conversation ||= Current.account.conversations.find_by!(display_id: params[:id])
@@ -226,10 +215,6 @@ end
 
   def contact_inbox
     @contact_inbox = build_contact_inbox
-
-    # fallback for the old case where we do look up only using source id
-    # In future we need to change this and make sure we do look up on combination of inbox_id and source_id
-    # and deprecate the support of passing only source_id as the param
     @contact_inbox ||= ::ContactInbox.find_by!(source_id: params[:source_id])
     authorize @contact_inbox.inbox, :show?
   rescue ActiveRecord::RecordNotUnique
