@@ -209,6 +209,16 @@ export default {
     isConversationAssignedToCurrentUser() {
       return this.currentChat?.meta?.assignee?.id === this.currentUser?.id;
     },
+    canReplyWithoutAssignment() {
+  const permissions = this.currentUser?.accounts?.find(
+    account => account.id === this.currentChat?.account_id
+  )?.permissions || [];
+
+  return (
+    permissions.includes('administrator') ||
+    permissions.includes('supervisor')
+  );
+},
     messagePlaceHolder() {
       if (this.isEditorDisabled) {
         if (!this.isOnPrivateNote && !this.isConversationAssignedToCurrentUser) {
@@ -445,7 +455,9 @@ export default {
     },
     isEditorDisabled() {
       const isPublicReplyBlocked =
-        !this.isOnPrivateNote && !this.isConversationAssignedToCurrentUser;
+  !this.isOnPrivateNote &&
+  !this.isConversationAssignedToCurrentUser &&
+  !this.canReplyWithoutAssignment;
 
       const isMessagingWindowBlocked =
         (this.isAWhatsAppChannel || this.isAPIInbox) &&
