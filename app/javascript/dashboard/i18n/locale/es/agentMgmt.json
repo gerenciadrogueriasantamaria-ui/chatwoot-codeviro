@@ -6,9 +6,10 @@
     "DESCRIPTION": "Un agente es miembro de su equipo de atención al cliente, quién puede ver y responder a los mensajes del usuario.  La siguiente lista muestra todos los agentes en su cuenta.",
     "LEARN_MORE": "Aprender acerca de roles de usuario",
     "AGENT_TYPES": {
-      "ADMINISTRATOR": "Administrador",
-      "AGENT": "Agente"
-    },
+  "ADMINISTRATOR": "Administrador",
+  "SUPERVISOR": "Supervisor",
+  "AGENT": "Agente"
+}
     "COUNT": "{n} agent | {n} agents",
     "LIST": {
       "404": "No hay agentes asociados a esta cuenta",
