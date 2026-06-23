@@ -1,14 +1,14 @@
 class AccountPolicy < ApplicationPolicy
   def show?
-    @account_user.administrator? || @account_user.agent?
+    staff_user?
   end
 
   def cache_keys?
-    @account_user.administrator? || @account_user.agent?
+    staff_user?
   end
 
   def limits?
-    @account_user.administrator? || @account_user.agent?
+    staff_user?
   end
 
   def update?
@@ -33,5 +33,11 @@ class AccountPolicy < ApplicationPolicy
 
   def topup_checkout?
     @account_user.administrator?
+  end
+
+  private
+
+  def staff_user?
+    @account_user.administrator? || @account_user.agent? || @account_user.supervisor?
   end
 end
