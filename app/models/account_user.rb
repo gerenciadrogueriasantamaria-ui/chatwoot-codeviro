@@ -31,7 +31,7 @@ class AccountUser < ApplicationRecord
   belongs_to :user
   belongs_to :inviter, class_name: 'User', optional: true
 
-  enum role: { agent: 0, administrator: 1 }
+  enum role: { agent: 0, administrator: 1, supervisor: 2 }
   enum availability: { online: 0, offline: 1, busy: 2 }
 
   accepts_nested_attributes_for :account
@@ -54,8 +54,11 @@ class AccountUser < ApplicationRecord
   end
 
   def permissions
-    administrator? ? ['administrator'] : ['agent']
-  end
+  return ['administrator'] if administrator?
+  return ['supervisor'] if supervisor?
+
+  ['agent']
+end
 
   def push_event_data
     {
