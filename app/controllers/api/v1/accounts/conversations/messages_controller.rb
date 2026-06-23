@@ -60,6 +60,8 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
 def ensure_current_user_can_reply
   return unless Current.user
   return if @conversation.assignee_id == Current.user.id
+  return if Current.account_user&.administrator?
+  return if Current.account_user&.supervisor?
 
   render json: { error: 'Solo el agente asignado puede responder esta conversación' }, status: :forbidden
 end
