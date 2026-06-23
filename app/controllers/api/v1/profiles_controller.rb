@@ -1,7 +1,9 @@
 class Api::V1::ProfilesController < Api::BaseController
   before_action :set_user
 
-  def show; end
+  def show
+  mark_current_user_online!
+  end
 
   def update
     if password_params[:password].present?
@@ -29,8 +31,10 @@ class Api::V1::ProfilesController < Api::BaseController
   end
 
   def set_active_account
-    @user.account_users.find_by(account_id: profile_params[:account_id]).update(active_at: Time.now.utc)
-    head :ok
+  account_user = @user.account_users.find_by(account_id: profile_params[:account_id])
+  account_user.update(active_at: Time.now.utc)
+  mark_current_user_online!(account_user.account_id)
+  head :ok
   end
 
   def resend_confirmation
@@ -44,6 +48,20 @@ class Api::V1::ProfilesController < Api::BaseController
   end
 
   private
+
+  def mark_current_user_online!(account_id = nil)
+  account_user = if account_id.present?
+                   @user.account_users.find_by(account_id: account_id)
+                 else
+                   @user.active_account_user
+                 end
+
+  return if account_user.blank?
+
+  account_user.update!(availability: :online, auto_offline: false)
+  OnlineStatusTracker.update_presence(account_user.account_id, 'User', @user.id)
+  OnlineStatusTracker.set_status(account_user.account_id, @user.id, 'online')
+  end
 
   def set_user
     @user = current_user
