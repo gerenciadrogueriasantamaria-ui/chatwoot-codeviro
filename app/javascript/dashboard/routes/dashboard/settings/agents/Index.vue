@@ -66,6 +66,16 @@ const getAgentRoleName = agent => {
   return customRole ? customRole.name : '';
 };
 
+  const getAgentAvailabilityLabel = agent => {
+  const labels = {
+    online: 'En línea',
+    busy: 'Ocupado',
+    offline: 'Desconectado',
+  };
+
+  return labels[agent.availability_status] || 'Desconectado';
+};
+
 const getAgentRolePermissions = agent => {
   if (!agent.custom_role_id) {
     return [];
@@ -238,6 +248,10 @@ const confirmDeletion = () => {
                   </div>
                 </span>
                 <div class="w-px h-3 bg-n-strong rounded-lg" />
+                <div class="w-px h-3 bg-n-strong rounded-lg" />
+                <span class="text-body-main text-n-slate-11">
+                  {{ getAgentAvailabilityLabel(agent) }}
+                </span>
                 <span
                   v-if="agent.confirmed"
                   class="text-body-main text-n-slate-11"
