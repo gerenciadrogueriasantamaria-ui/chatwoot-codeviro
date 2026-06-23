@@ -59,21 +59,21 @@ class Conversations::AssignmentService
   end
 
   def ensure_actor_can_manage_existing_assignment!
-    return if actor.blank?
-    return if actor_administrator?
-    return if conversation.assignee_id.blank?
-    return if conversation.assignee_id == actor.id
+  return if actor.blank?
+  return if actor_can_override_assignment?
+  return if conversation.assignee_id.blank?
+  return if conversation.assignee_id == actor.id
 
-    raise AssignmentError, 'Esta conversación ya está asignada a otro agente'
-  end
+  raise AssignmentError, 'Esta conversación ya está asignada a otro agente'
+end
 
-  def ensure_conversation_available_for!(new_assignee)
-    return if actor_administrator?
-    return if conversation.assignee_id.blank?
-    return if conversation.assignee_id == new_assignee.id
+def ensure_conversation_available_for!(new_assignee)
+  return if actor_can_override_assignment?
+  return if conversation.assignee_id.blank?
+  return if conversation.assignee_id == new_assignee.id
 
-    raise AssignmentError, 'Esta conversación ya está asignada a otro agente'
-  end
+  raise AssignmentError, 'Esta conversación ya está asignada a otro agente'
+end
 
   def ensure_assignee_has_capacity!(new_assignee)
     return if unlimited_assignment_user?(new_assignee)
@@ -88,10 +88,11 @@ class Conversations::AssignmentService
     raise AssignmentError, 'El agente ya tiene 5 conversaciones activas asignadas'
   end
 
-  def actor_administrator?
-    return false if actor.blank?
+  def actor_can_override_assignment?
+  return false if actor.blank?
 
-    account_user_for(actor)&.administrator?
+  account_user = account_user_for(actor)
+  account_user&.administrator? || account_user&.supervisor?
   end
 
   def unlimited_assignment_user?(user)
