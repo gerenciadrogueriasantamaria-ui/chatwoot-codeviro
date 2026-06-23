@@ -76,7 +76,7 @@ class Conversations::AssignmentService
   end
 
   def ensure_assignee_has_capacity!(new_assignee)
-    return if account_user_for(new_assignee)&.administrator?
+    return if unlimited_assignment_user?(new_assignee)
 
     active_count = conversation.account.conversations
                                .where(assignee_id: new_assignee.id, status: ACTIVE_ASSIGNMENT_STATUSES)
@@ -92,6 +92,11 @@ class Conversations::AssignmentService
     return false if actor.blank?
 
     account_user_for(actor)&.administrator?
+  end
+
+  def unlimited_assignment_user?(user)
+  account_user = account_user_for(user)
+  account_user&.administrator? || account_user&.supervisor?
   end
 
   def account_user_for(user)
