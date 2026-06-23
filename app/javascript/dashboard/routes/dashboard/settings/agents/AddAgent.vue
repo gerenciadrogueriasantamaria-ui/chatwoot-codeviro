@@ -33,17 +33,22 @@ const getCustomRoles = useMapGetter('customRole/getCustomRoles');
 
 const roles = computed(() => {
   const defaultRoles = [
-    {
-      id: 'administrator',
-      name: 'administrator',
-      label: t('AGENT_MGMT.AGENT_TYPES.ADMINISTRATOR'),
-    },
-    {
-      id: 'agent',
-      name: 'agent',
-      label: t('AGENT_MGMT.AGENT_TYPES.AGENT'),
-    },
-  ];
+  {
+    id: 'administrator',
+    name: 'administrator',
+    label: t('AGENT_MGMT.AGENT_TYPES.ADMINISTRATOR'),
+  },
+  {
+    id: 'supervisor',
+    name: 'supervisor',
+    label: 'Supervisor',
+  },
+  {
+    id: 'agent',
+    name: 'agent',
+    label: t('AGENT_MGMT.AGENT_TYPES.AGENT'),
+  },
+];
 
   const customRoles = getCustomRoles.value.map(role => ({
     id: role.id,
