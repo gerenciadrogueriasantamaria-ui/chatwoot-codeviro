@@ -58,7 +58,7 @@ class Api::V1::ProfilesController < Api::BaseController
 
   return if account_user.blank?
 
-  account_user.update!(availability: :online, auto_offline: false)
+  account_user.update!(availability: :online, auto_offline: true)
   OnlineStatusTracker.update_presence(account_user.account_id, 'User', @user.id)
   OnlineStatusTracker.set_status(account_user.account_id, @user.id, 'online')
   end
