@@ -74,7 +74,7 @@ def ensure_conversation_available_for!(new_assignee)
 
   raise AssignmentError, 'Esta conversación ya está asignada a otro agente'
 end
-
+  
   def ensure_assignee_has_capacity!(new_assignee)
     return if unlimited_assignment_user?(new_assignee)
 
@@ -91,9 +91,32 @@ end
   def actor_can_override_assignment?
   return false if actor.blank?
 
-  account_user = account_user_for(actor)
-  account_user&.administrator? || account_user&.supervisor?
+  account_user_can_override?(actor_account_user)
   end
+
+  def actor_account_user
+  return @actor_account_user if defined?(@actor_account_user)
+
+  @actor_account_user =
+    if defined?(Current) &&
+       Current.respond_to?(:account_user) &&
+       Current.account_user&.user_id == actor.id &&
+       Current.account_user&.account_id == conversation.account_id
+      Current.account_user
+    else
+      account_user_for(actor)
+    end
+end
+
+def account_user_can_override?(account_user)
+  return false if account_user.blank?
+
+  account_user.administrator? ||
+    account_user.supervisor? ||
+    %w[administrator supervisor].include?(account_user.role.to_s) ||
+    account_user.permissions.include?('administrator') ||
+    account_user.permissions.include?('supervisor')
+end
 
   def unlimited_assignment_user?(user)
   account_user = account_user_for(user)
