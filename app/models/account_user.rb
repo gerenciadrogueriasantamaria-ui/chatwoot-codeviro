@@ -55,7 +55,7 @@ class AccountUser < ApplicationRecord
 
   def permissions
   return ['administrator'] if administrator?
-  return ['supervisor'] if supervisor?
+  return ['agent', 'supervisor'] if supervisor?
 
   ['agent']
 end
