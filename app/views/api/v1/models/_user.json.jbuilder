@@ -13,7 +13,8 @@ json.name resource.name
 json.provider resource.provider
 json.pubsub_token resource.pubsub_token
 json.custom_attributes resource.custom_attributes if resource.custom_attributes.present?
-json.role resource.active_account_user&.role
+active_role = resource.active_account_user&.supervisor? ? 'agent' : resource.active_account_user&.role
+json.role active_role
 json.ui_settings resource.ui_settings
 json.uid resource.uid
 json.type resource.type
@@ -24,7 +25,7 @@ json.accounts do
     json.status account_user.account.status
     json.onboarding_step account_user.account.onboarding_step
     json.active_at account_user.active_at
-    json.role account_user.role
+    json.role account_user.supervisor? ? 'agent' : account_user.role
     json.permissions account_user.permissions
     # the actual availability user has configured
     json.availability account_user.availability
