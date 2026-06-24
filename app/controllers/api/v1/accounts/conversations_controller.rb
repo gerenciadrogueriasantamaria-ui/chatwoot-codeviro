@@ -152,9 +152,10 @@ end
   end
 
   def should_auto_assign_conversation_on_view?
-    Current.user.is_a?(User) &&
-      Current.account_user&.agent? &&
-      @conversation.assignee_id.blank?
+  Current.user.is_a?(User) &&
+    Current.account_user&.agent? &&
+    @conversation.status == 'open' &&
+    @conversation.assignee_id.blank?
   end
 
   def permitted_update_params
