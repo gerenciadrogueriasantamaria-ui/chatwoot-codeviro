@@ -67,6 +67,7 @@ class Conversation < ApplicationRecord
   validates :contact_id, presence: true
   before_validation :validate_additional_attributes
   before_validation :reset_agent_bot_when_assignee_present
+  before_validation :clear_assignee_when_resolved
   validates :additional_attributes, jsonb_attributes_length: true
   validates :custom_attributes, jsonb_attributes_length: true
   validates :uuid, uniqueness: true
@@ -219,6 +220,14 @@ class Conversation < ApplicationRecord
   end
 
   private
+
+  def clear_assignee_when_resolved
+  return unless resolved?
+
+  self.assignee_id = nil
+  self.assignee_agent_bot_id = nil
+  self.assignee_last_seen_at = nil
+  end
 
   def execute_after_update_commit_callbacks
     handle_resolved_status_change
