@@ -1,6 +1,6 @@
 class Conversations::AssignmentService
   MAX_ACTIVE_ASSIGNMENTS = 5
-  ACTIVE_ASSIGNMENT_STATUSES = %i[open].freeze
+  ACTIVE_ASSIGNMENT_STATUSES = %i[open pending snoozed].freeze
 
   class AssignmentError < StandardError; end
 
