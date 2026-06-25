@@ -20,42 +20,50 @@ class Conversations::AssignmentService
   attr_reader :conversation, :assignee_id, :assignee_type, :actor
 
   def assign_agent
-    assigned_agent = nil
+  assigned_agent = nil
 
-    conversation.with_lock do
-      ensure_actor_can_manage_existing_assignment!
+  conversation.with_lock do
+    ensure_actor_can_manage_existing_assignment!
 
-      if assignee.blank?
-        conversation.assignee = nil
-        conversation.assignee_agent_bot = nil
-        conversation.save!
-        next
-      end
-
-      ensure_conversation_available_for!(assignee)
-      ensure_assignee_has_capacity!(assignee)
-
-      conversation.assignee = assignee
+    if assignee.blank?
+      conversation.assignee = nil
       conversation.assignee_agent_bot = nil
       conversation.save!
-      assigned_agent = assignee
+      next
     end
 
-    assigned_agent
+    ensure_conversation_can_be_assigned!
+    ensure_conversation_available_for!(assignee)
+    ensure_assignee_has_capacity!(assignee)
+
+    conversation.assignee = assignee
+    conversation.assignee_agent_bot = nil
+    conversation.save!
+    assigned_agent = assignee
+  end
+
+  assigned_agent
   end
 
   def assign_agent_bot
-    return unless agent_bot
+  return unless agent_bot
 
-    conversation.with_lock do
-      ensure_actor_can_manage_existing_assignment!
+  conversation.with_lock do
+    ensure_actor_can_manage_existing_assignment!
+    ensure_conversation_can_be_assigned!
 
-      conversation.assignee = nil
-      conversation.assignee_agent_bot = agent_bot
-      conversation.save!
-    end
+    conversation.assignee = nil
+    conversation.assignee_agent_bot = agent_bot
+    conversation.save!
+  end
 
-    agent_bot
+  agent_bot
+  end
+
+  def ensure_conversation_can_be_assigned!
+    return unless conversation.resolved?
+
+    raise AssignmentError, 'No se puede asignar una conversación resuelta'
   end
 
   def ensure_actor_can_manage_existing_assignment!
