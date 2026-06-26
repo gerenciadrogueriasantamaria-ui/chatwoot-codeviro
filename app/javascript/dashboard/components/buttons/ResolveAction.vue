@@ -197,6 +197,7 @@ useEmitter(CMD_RESOLVE_CONVERSATION, onCmdResolveConversation);
 <template>
   <div class="flex relative justify-end items-center resolve-actions">
     <ButtonGroup
+      v-if="!isOpen || canResolveConversation"
       class="flex-shrink-0 rounded-lg shadow outline-1 outline"
       :class="!showOpenButton ? 'outline-n-container' : 'outline-transparent'"
     >
