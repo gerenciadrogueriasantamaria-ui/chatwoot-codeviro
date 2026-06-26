@@ -34,6 +34,20 @@ const closeDropdown = () => toggleDropdown(false);
 const openDropdown = () => toggleDropdown(true);
 
 const currentChat = computed(() => getters.getSelectedChat.value);
+const currentUser = computed(() => getters.getCurrentUser.value);
+
+const canResolveConversation = computed(() => {
+  const role = currentUser.value?.role;
+
+  if (['administrator', 'supervisor'].includes(role)) {
+    return true;
+  }
+
+  return (
+    Number(currentChat.value?.meta?.assignee?.id) ===
+    Number(currentUser.value?.id)
+  );
+});
 
 const isOpen = computed(
   () => currentChat.value.status === wootConstants.STATUS_TYPE.OPEN
@@ -105,6 +119,7 @@ const handleResolveWithAttributes = ({ attributes, context }) => {
   if (context) {
     const currentCustomAttributes = currentChat.value.custom_attributes || {};
     const mergedAttributes = { ...currentCustomAttributes, ...attributes };
+
     toggleStatus(
       wootConstants.STATUS_TYPE.RESOLVED,
       context.snoozedUntil,
@@ -118,6 +133,13 @@ const onCmdOpenConversation = () => {
 };
 
 const onCmdResolveConversation = () => {
+  if (!canResolveConversation.value) {
+    useAlert(
+      'Solo el agente asignado, un supervisor o un administrador puede resolver esta conversación'
+    );
+    return;
+  }
+
   const currentCustomAttributes = currentChat.value.custom_attributes || {};
   const { hasMissing, missing } = checkMissingAttributes(
     currentCustomAttributes
@@ -128,6 +150,7 @@ const onCmdResolveConversation = () => {
       id: currentChat.value.id,
       snoozedUntil: null,
     };
+
     resolveAttributesModalRef.value?.open(
       missing,
       currentCustomAttributes,
@@ -159,6 +182,7 @@ const keyboardEvents = {
         all[0].click();
         document.querySelector('.conversations-list').scrollTop = 0;
       }
+
       event.preventDefault();
     },
   },
@@ -177,7 +201,7 @@ useEmitter(CMD_RESOLVE_CONVERSATION, onCmdResolveConversation);
       :class="!showOpenButton ? 'outline-n-container' : 'outline-transparent'"
     >
       <Button
-        v-if="isOpen"
+        v-if="isOpen && canResolveConversation"
         :label="t('CONVERSATION.HEADER.RESOLVE_ACTION')"
         size="sm"
         color="slate"
@@ -186,6 +210,7 @@ useEmitter(CMD_RESOLVE_CONVERSATION, onCmdResolveConversation);
         :is-loading="isLoading"
         @click="onCmdResolveConversation"
       />
+
       <Button
         v-else-if="isResolved"
         :label="t('CONVERSATION.HEADER.REOPEN_ACTION')"
@@ -196,6 +221,7 @@ useEmitter(CMD_RESOLVE_CONVERSATION, onCmdResolveConversation);
         :is-loading="isLoading"
         @click="onCmdOpenConversation"
       />
+
       <Button
         v-else-if="showOpenButton"
         :label="t('CONVERSATION.HEADER.OPEN_ACTION')"
@@ -205,6 +231,7 @@ useEmitter(CMD_RESOLVE_CONVERSATION, onCmdResolveConversation);
         :is-loading="isLoading"
         @click="onCmdOpenConversation"
       />
+
       <Button
         v-if="showAdditionalActions"
         ref="arrowDownButtonRef"
@@ -218,6 +245,7 @@ useEmitter(CMD_RESOLVE_CONVERSATION, onCmdResolveConversation);
         @click="openDropdown"
       />
     </ButtonGroup>
+
     <div
       v-if="showActionsDropdown"
       v-on-clickaway="closeDropdown"
@@ -236,6 +264,7 @@ useEmitter(CMD_RESOLVE_CONVERSATION, onCmdResolveConversation);
             @click="() => openSnoozeModal()"
           />
         </WootDropdownItem>
+
         <WootDropdownItem v-if="!isPending">
           <Button
             :label="t('CONVERSATION.RESOLVE_DROPDOWN.MARK_PENDING')"
@@ -250,6 +279,7 @@ useEmitter(CMD_RESOLVE_CONVERSATION, onCmdResolveConversation);
         </WootDropdownItem>
       </WootDropdownMenu>
     </div>
+
     <ConversationResolveAttributesModal
       ref="resolveAttributesModalRef"
       @submit="handleResolveWithAttributes"
