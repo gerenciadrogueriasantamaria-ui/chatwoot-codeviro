@@ -152,8 +152,10 @@ end
   end
 
   def should_auto_assign_conversation_on_view?
+  account_user = Current.account_user
+
   Current.user.is_a?(User) &&
-    Current.account_user&.agent? &&
+    (account_user&.agent? || account_user&.supervisor?) &&
     @conversation.status == 'open' &&
     @conversation.assignee_id.blank?
   end
