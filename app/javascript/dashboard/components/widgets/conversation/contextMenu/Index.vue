@@ -301,7 +301,11 @@ export default {
     <template v-if="isAllowed([MENU.STATUS, MENU.SNOOZE])">
       <template v-for="option in statusMenuConfig">
         <MenuItem
-          v-if="show(option.key) && isAllowed([MENU.STATUS])"
+          v-if="
+            show(option.key) &&
+            isAllowed([MENU.STATUS]) &&
+            (option.key !== STATUS_TYPE.PENDING || isAdmin)
+          "
           :key="option.key"
           :option="option"
           variant="icon"
@@ -309,7 +313,7 @@ export default {
         />
       </template>
       <MenuItem
-        v-if="showSnooze && isAllowed([MENU.SNOOZE])"
+        v-if="isAdmin && showSnooze && isAllowed([MENU.SNOOZE])"
         :option="snoozeOption"
         variant="icon"
         @click.stop="snoozeConversation()"
