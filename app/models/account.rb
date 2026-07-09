@@ -58,6 +58,8 @@ class Account < ApplicationRecord
   include AccountCaptainAutoResolve
 
   has_many :account_users, dependent: :destroy_async
+  has_many :agent_access_policies, dependent: :destroy_async
+  has_many :agent_access_sessions, dependent: :destroy_async
   has_many :agent_bot_inboxes, dependent: :destroy_async
   has_many :agent_bots, dependent: :destroy_async
   has_many :api_channels, dependent: :destroy_async, class_name: '::Channel::Api'
