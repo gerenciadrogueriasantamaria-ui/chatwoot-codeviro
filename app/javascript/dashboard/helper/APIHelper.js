@@ -18,6 +18,7 @@ const parseErrorCode = error => Promise.reject(error);
 export default axios => {
   const { apiHost = '' } = window.chatwootConfig || {};
   const wootApi = axios.create({ baseURL: `${apiHost}/` });
+
   // Add Auth Headers to requests if logged in
   if (Auth.hasAuthCookie()) {
     const {
@@ -27,6 +28,7 @@ export default axios => {
       expiry,
       uid,
     } = Auth.getAuthData();
+
     Object.assign(wootApi.defaults.headers.common, {
       'access-token': accessToken,
       'token-type': tokenType,
@@ -35,7 +37,8 @@ export default axios => {
       uid,
     });
   }
-    wootApi.interceptors.request.use(config => {
+
+  wootApi.interceptors.request.use(config => {
     config.headers['X-Agent-Access-Client-Id'] = getAgentAccessClientId();
     return config;
   });
@@ -45,3 +48,6 @@ export default axios => {
     response => response,
     error => parseErrorCode(error)
   );
+
+  return wootApi;
+};
