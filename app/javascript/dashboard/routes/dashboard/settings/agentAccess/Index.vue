@@ -222,8 +222,8 @@ onMounted(loadUsers);
                   class="h-9 rounded border border-n-weak transition-colors"
                   :class="
                     isHourEnabled(day.key, hour)
-                      ? 'bg-blue-600 hover:bg-blue-500'
-                      : 'bg-n-alpha-2 hover:bg-n-alpha-3'
+                    ? 'bg-[#1f93ff] hover:bg-[#1a7edb] border-[#1f93ff]'
+                    : 'bg-n-alpha-2 hover:bg-n-alpha-3'
                   "
                   @click="toggleHour(day.key, hour)"
                 />
@@ -237,13 +237,14 @@ onMounted(loadUsers);
             <h2 class="text-base font-semibold text-n-slate-12">
               Sesiones activas
             </h2>
-            <woot-button
-              size="small"
-              :is-loading="isSaving"
-              @click="savePolicy"
-            >
-              Guardar cambios
-            </woot-button>
+            <button
+  type="button"
+  class="h-9 rounded-md bg-[#1f93ff] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1a7edb] disabled:cursor-not-allowed disabled:opacity-60"
+  :disabled="isSaving"
+  @click="savePolicy"
+>
+  {{ isSaving ? 'Guardando...' : 'Guardar cambios' }}
+</button>
           </div>
 
           <div
