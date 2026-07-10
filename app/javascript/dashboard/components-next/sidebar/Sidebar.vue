@@ -665,6 +665,7 @@ const menuItems = computed(() => {
   name: 'Settings Agent Access',
   label: 'Control de acceso',
   icon: 'i-lucide-calendar-clock',
+  activeOn: ['agent_access_settings_index'],
   to: accountScopedRoute('agent_access_settings_index'),
 },
 {
