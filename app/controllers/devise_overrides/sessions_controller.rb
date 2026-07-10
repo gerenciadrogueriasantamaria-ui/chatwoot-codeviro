@@ -13,18 +13,81 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     return handle_sso_authentication if sso_authentication_request?
 
     user = find_user_for_authentication
+    return render_agent_access_denied(user) if agent_access_denied?(user)
     return handle_mfa_required(user) if user&.mfa_enabled?
-
+  
     # Only proceed with standard authentication if no MFA is required
     super
   end
 
   def render_create_success
+    register_agent_access_session
+    response.set_header('X-Agent-Access-Client-Id', @agent_access_guard.client_id) if @agent_access_guard
+
     render partial: 'devise/auth', formats: [:json], locals: { resource: @resource }
   end
 
   private
 
+  def agent_access_denied?(user)
+  return false unless user
+
+  account = agent_access_account_for(user)
+  return false unless account
+
+  @agent_access_guard = AgentAccess::SessionGuard.new(
+    user: user,
+    account: account,
+    request: request,
+    client_id: request.headers['X-Agent-Access-Client-Id']
+  )
+
+  !@agent_access_guard.allowed?
+end
+
+def render_agent_access_denied(user)
+  reason = @agent_access_guard&.denial_reason || 'access_denied'
+
+  render json: {
+    success: false,
+    error: agent_access_error_message(reason),
+    error_code: reason
+  }, status: :unauthorized
+end
+
+def register_agent_access_session
+  return unless @resource
+
+  account = agent_access_account_for(@resource)
+  return unless account
+
+  @agent_access_guard ||= AgentAccess::SessionGuard.new(
+    user: @resource,
+    account: account,
+    request: request,
+    client_id: request.headers['X-Agent-Access-Client-Id']
+  )
+
+  @agent_access_guard.register!
+end
+
+def agent_access_account_for(user)
+  return Account.find_by(id: params[:account_id]) if params[:account_id].present?
+
+  user.accounts.first
+end
+
+def agent_access_error_message(reason)
+  case reason
+  when 'outside_schedule'
+    'No puedes ingresar fuera de tu horario permitido.'
+  when 'max_sessions_reached'
+    'Ya alcanzaste el límite de sesiones activas.'
+  else
+    'No tienes permitido ingresar al CRM.'
+  end
+end
+  
   def render_create_error_not_confirmed
     render_error(
       :unauthorized,
