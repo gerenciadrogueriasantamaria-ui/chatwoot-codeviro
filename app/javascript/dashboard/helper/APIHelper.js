@@ -1,5 +1,18 @@
 import Auth from '../api/auth';
 
+const AGENT_ACCESS_CLIENT_ID_KEY = 'cw_agent_access_client_id';
+
+const getAgentAccessClientId = () => {
+  let clientId = window.localStorage.getItem(AGENT_ACCESS_CLIENT_ID_KEY);
+
+  if (!clientId) {
+    clientId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    window.localStorage.setItem(AGENT_ACCESS_CLIENT_ID_KEY, clientId);
+  }
+
+  return clientId;
+};
+
 const parseErrorCode = error => Promise.reject(error);
 
 export default axios => {
@@ -22,10 +35,13 @@ export default axios => {
       uid,
     });
   }
+    wootApi.interceptors.request.use(config => {
+    config.headers['X-Agent-Access-Client-Id'] = getAgentAccessClientId();
+    return config;
+  });
+
   // Response parsing interceptor
   wootApi.interceptors.response.use(
     response => response,
     error => parseErrorCode(error)
   );
-  return wootApi;
-};
