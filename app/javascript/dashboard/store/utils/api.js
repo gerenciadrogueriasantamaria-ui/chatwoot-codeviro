@@ -15,6 +15,16 @@ import {
 
 Cookies.defaults = { sameSite: 'Lax' };
 
+const AGENT_ACCESS_CLIENT_ID_KEY = 'cw_agent_access_client_id';
+
+const setAgentAccessClientId = response => {
+  const clientId = response.headers['x-agent-access-client-id'];
+
+  if (clientId) {
+    window.localStorage.setItem(AGENT_ACCESS_CLIENT_ID_KEY, clientId);
+  }
+};
+
 export const getLoadingStatus = state => state.fetchAPIloadingStatus;
 export const setLoadingStatus = (state, status) => {
   state.fetchAPIloadingStatus = status;
@@ -30,6 +40,8 @@ export const getHeaderExpiry = response =>
 
 export const setAuthCredentials = response => {
   const expiryDate = getHeaderExpiry(response);
+  setAgentAccessClientId(response);
+
   Cookies.set('cw_d_session_info', JSON.stringify(response.headers), {
     expires: differenceInDays(expiryDate, new Date()),
   });
@@ -44,6 +56,7 @@ export const clearBrowserSessionCookies = () => {
 
 export const clearLocalStorageOnLogout = () => {
   LocalStorage.remove(LOCAL_STORAGE_KEYS.DRAFT_MESSAGES);
+  window.localStorage.removeItem(AGENT_ACCESS_CLIENT_ID_KEY);
 };
 
 export const clearSessionStorageOnLogout = () => {
