@@ -61,6 +61,12 @@ Rails.application.routes.draw do
           resources :agents, only: [:index, :create, :update, :destroy] do
             post :bulk_create, on: :collection
           end
+
+          resources :agent_access_policies, only: [:index, :show, :update], param: :user_id do
+            member do
+            delete 'sessions/:session_id', action: :destroy_session
+            end
+          end
           namespace :captain do
             resource :preferences, only: [:show, :update]
             resources :assistants do
