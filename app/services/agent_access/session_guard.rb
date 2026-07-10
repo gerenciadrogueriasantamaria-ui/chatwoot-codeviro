@@ -1,5 +1,6 @@
 class AgentAccess::SessionGuard
   SESSION_TTL = 12.hours
+  TIME_ZONE = 'America/Bogota'
 
   def initialize(user:, account:, request:, client_id: nil)
     @user = user
@@ -13,7 +14,7 @@ class AgentAccess::SessionGuard
   def allowed?
     return true if administrator?
     return false unless policy.enabled?
-    return false unless policy.allows_hour?(Time.zone.now)
+    return false unless policy.allows_hour?(current_time)
     return false if policy.max_sessions.zero?
 
     existing_session.present? || active_sessions.count < policy.max_sessions
@@ -21,7 +22,7 @@ class AgentAccess::SessionGuard
 
   def denial_reason
     return nil if allowed?
-    return 'outside_schedule' unless policy.allows_hour?(Time.zone.now)
+    return 'outside_schedule' unless policy.allows_hour?(current_time)
     return 'max_sessions_reached' if policy.max_sessions.zero?
     return 'max_sessions_reached' if active_sessions.count >= policy.max_sessions
 
@@ -49,6 +50,10 @@ class AgentAccess::SessionGuard
   end
 
   private
+
+  def current_time
+    Time.current.in_time_zone(TIME_ZONE)
+  end
 
   def administrator?
     account_user&.administrator?
