@@ -16,6 +16,7 @@ class AgentAccess::SessionGuard
     return false unless policy.enabled?
     return false unless policy.allows_hour?(current_time)
     return false if policy.max_sessions.zero?
+    return false if revoked_session.present?
 
     existing_session.present? || active_sessions.count < policy.max_sessions
   end
@@ -24,6 +25,7 @@ class AgentAccess::SessionGuard
     return nil if allowed?
     return 'outside_schedule' unless policy.allows_hour?(current_time)
     return 'max_sessions_reached' if policy.max_sessions.zero?
+    return 'session_revoked' if revoked_session.present?
     return 'max_sessions_reached' if active_sessions.count >= policy.max_sessions
 
     'access_denied'
@@ -78,4 +80,11 @@ class AgentAccess::SessionGuard
   def existing_session
     @existing_session ||= active_sessions.find_by(client_id: @client_id)
   end
+
+  def revoked_session
+  @revoked_session ||= @account.agent_access_sessions
+                                .where(user: @user, client_id: @client_id)
+                                .where.not(revoked_at: nil)
+                                .first
+end
 end
