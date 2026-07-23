@@ -268,14 +268,13 @@ onMounted(loadUsers);
               </p>
             </div>
 
-            <woot-button
-              color-scheme="alert"
-              variant="smooth"
-              size="small"
+            <button
+              type="button"
+              class="h-9 rounded-md bg-[#1f93ff] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#1a7edb]"
               @click="revokeSession(session.id)"
             >
               Cerrar
-            </woot-button>
+            </button>
           </div>
         </section>
       </div>
