@@ -1,3 +1,4 @@
+import Cookies from 'js-cookie';
 import Auth from '../api/auth';
 
 const AGENT_ACCESS_CLIENT_ID_KEY = 'cw_agent_access_client_id';
@@ -20,6 +21,13 @@ const AGENT_ACCESS_ERROR_CODES = [
   'access_denied',
 ];
 
+const AGENT_ACCESS_ERROR_CODES = [
+    const clearAgentAccessBrowserSession = () => {
+  Cookies.remove('cw_d_session_info');
+  Cookies.remove('auth_data');
+  Cookies.remove('user');
+  window.localStorage.removeItem(AGENT_ACCESS_CLIENT_ID_KEY);
+};
 const parseErrorCode = error => {
   const errorCode = error?.response?.data?.error_code;
 
@@ -27,8 +35,13 @@ const parseErrorCode = error => {
     error?.response?.status === 401 &&
     AGENT_ACCESS_ERROR_CODES.includes(errorCode)
   ) {
-    window.location = '/app/login';
-    return Promise.reject(error);
+    clearAgentAccessBrowserSession();
+
+if (window.location.pathname !== '/app/login') {
+  window.location.replace('/app/login');
+}
+
+return Promise.reject(error);
   }
 
   return Promise.reject(error);
