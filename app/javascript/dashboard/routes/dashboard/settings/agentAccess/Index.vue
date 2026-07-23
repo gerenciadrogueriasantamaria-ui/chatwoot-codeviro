@@ -85,6 +85,16 @@ const isHourEnabled = (dayKey, hour) => {
   return policy.value.schedule?.[dayKey]?.[String(hour)] === true;
 };
 
+  const formatColombiaDateTime = value => {
+  if (!value) return 'N/A';
+
+  return new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
+};
+
 const savePolicy = async () => {
   if (!selectedUserId.value) return;
 
@@ -264,7 +274,7 @@ onMounted(loadUsers);
                 {{ session.user_agent || 'Dispositivo sin identificar' }}
               </p>
               <p class="text-xs text-n-slate-11">
-                IP {{ session.ip_address || 'N/A' }} · Última actividad {{ session.last_seen_at || 'N/A' }}
+                IP {{ session.ip_address || 'N/A' }} · Última actividad {{ formatColombiaDateTime(session.last_seen_at) }}
               </p>
             </div>
 
