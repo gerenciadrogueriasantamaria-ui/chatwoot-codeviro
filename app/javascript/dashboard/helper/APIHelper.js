@@ -21,8 +21,7 @@ const AGENT_ACCESS_ERROR_CODES = [
   'access_denied',
 ];
 
-const AGENT_ACCESS_ERROR_CODES = [
-    const clearAgentAccessBrowserSession = () => {
+const clearAgentAccessBrowserSession = () => {
   Cookies.remove('cw_d_session_info');
   Cookies.remove('auth_data');
   Cookies.remove('user');
