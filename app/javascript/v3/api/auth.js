@@ -1,7 +1,6 @@
 import {
   setAuthCredentials,
   throwErrorMessage,
-  clearLocalStorageOnLogout,
   parseAPIErrorResponse,
 } from 'dashboard/store/utils/api';
 import wootAPI from './apiClient';
@@ -28,7 +27,6 @@ export const login = async ({
     }
 
     setAuthCredentials(response);
-    clearLocalStorageOnLogout();
     window.location = getLoginRedirectURL({
       ssoAccountId,
       ssoConversationId,
