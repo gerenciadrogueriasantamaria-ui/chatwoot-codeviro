@@ -13,7 +13,26 @@ const getAgentAccessClientId = () => {
   return clientId;
 };
 
-const parseErrorCode = error => Promise.reject(error);
+const AGENT_ACCESS_ERROR_CODES = [
+  'outside_schedule',
+  'max_sessions_reached',
+  'session_revoked',
+  'access_denied',
+];
+
+const parseErrorCode = error => {
+  const errorCode = error?.response?.data?.error_code;
+
+  if (
+    error?.response?.status === 401 &&
+    AGENT_ACCESS_ERROR_CODES.includes(errorCode)
+  ) {
+    window.location = '/app/login';
+    return Promise.reject(error);
+  }
+
+  return Promise.reject(error);
+};
 
 export default axios => {
   const { apiHost = '' } = window.chatwootConfig || {};
