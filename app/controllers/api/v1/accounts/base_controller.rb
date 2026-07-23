@@ -33,6 +33,8 @@ class Api::V1::Accounts::BaseController < Api::BaseController
 
   def agent_access_error_message(reason)
     case reason
+    when 'session_revoked'
+      'Tu sesión fue cerrada por un administrador.'
     when 'outside_schedule'
       'Tu sesión está fuera del horario permitido.'
     when 'max_sessions_reached'
