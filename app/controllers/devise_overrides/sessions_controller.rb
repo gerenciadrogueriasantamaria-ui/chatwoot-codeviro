@@ -27,7 +27,27 @@ class DeviseOverrides::SessionsController < DeviseTokenAuth::SessionsController
     render partial: 'devise/auth', formats: [:json], locals: { resource: @resource }
   end
 
+  def destroy
+  revoke_agent_access_session
+  super
+  end
+
   private
+
+  def revoke_agent_access_session
+  return unless current_user
+
+  account = agent_access_account_for(current_user)
+  return unless account
+
+  client_id = request.headers['X-Agent-Access-Client-Id']
+  return if client_id.blank?
+
+  account.agent_access_sessions
+         .active
+         .where(user: current_user, client_id: client_id)
+         .find_each(&:revoke!)
+  end
 
   def agent_access_denied?(user)
   return false unless user
