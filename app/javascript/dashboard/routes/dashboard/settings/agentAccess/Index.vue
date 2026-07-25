@@ -9,6 +9,8 @@ const days = [
   { key: '3', label: 'Miércoles' },
   { key: '4', label: 'Jueves' },
   { key: '5', label: 'Viernes' },
+  { key: '6', label: 'Sábado' },
+  { key: '0', label: 'Domingo' },
 ];
 
 const hours = Array.from({ length: 24 }, (_, index) => index);
@@ -102,7 +104,7 @@ const savePolicy = async () => {
 
   try {
     const response = await agentAccessPoliciesAPI.updatePolicy(selectedUserId.value, {
-      enabled: policy.value.enabled,
+      enabled: true,
       max_sessions: policy.value.max_sessions,
       schedule: policy.value.schedule,
     });
@@ -196,18 +198,10 @@ onMounted(loadUsers);
                 Haz clic en las horas donde {{ selectedUser?.name || 'el usuario' }} puede ingresar.
               </p>
             </div>
-
-            <label class="flex items-center gap-2 text-sm text-n-slate-12">
-              <input
-                v-model="policy.enabled"
-                type="checkbox"
-              />
-              Política activa
-            </label>
           </div>
 
           <div class="overflow-x-auto">
-            <div class="grid min-w-[920px] grid-cols-[88px_repeat(5,minmax(120px,1fr))] gap-1">
+            <div class="grid min-w-[1180px] grid-cols-[88px_repeat(7,minmax(120px,1fr))] gap-1">
               <div />
               <div
                 v-for="day in days"
