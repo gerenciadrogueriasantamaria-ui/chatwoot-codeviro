@@ -34,13 +34,7 @@ export default {
       });
     },
     shouldShowBanner() {
-      return (
-        !this.userDismissedBanner &&
-        this.globalConfig.displayManifest &&
-        this.updateAvailable &&
-        !this.isVersionNotificationDismissed(this.latestChatwootVersion) &&
-        this.isAdmin
-      );
+      return false;
     },
   },
   methods: {
@@ -70,7 +64,7 @@ export default {
 <!-- eslint-disable-next-line vue/no-root-v-if -->
 <template>
   <Banner
-    v-if="shouldShowBanner"
+    v-if="false"
     color-scheme="primary"
     :banner-message="bannerMessage"
     href-link="https://github.com/chatwoot/chatwoot/releases"
