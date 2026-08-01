@@ -45,6 +45,14 @@ class Api::V1::Accounts::AgentAccessPoliciesController < Api::V1::Accounts::Base
 
   private
 
+  def default_schedule
+    (0..6).each_with_object({}) do |day, schedule|
+      schedule[day.to_s] = (0..23).each_with_object({}) do |hour, hours|
+        hours[hour.to_s] = true
+      end
+    end
+  end
+
   def ensure_administrator!
     return if Current.account_user&.administrator?
 
@@ -59,7 +67,7 @@ class Api::V1::Accounts::AgentAccessPoliciesController < Api::V1::Accounts::Base
     Current.account.agent_access_policies.find_or_create_by!(user: user) do |policy|
       policy.enabled = true
       policy.max_sessions = 1
-      policy.schedule = {}
+      policy.schedule = default_schedule
     end
   end
 
