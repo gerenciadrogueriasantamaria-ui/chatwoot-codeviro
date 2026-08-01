@@ -32,12 +32,15 @@ const selectedUser = computed(() =>
 );
 
 const normalizeSchedule = schedule => {
+  const hasSchedule = schedule && Object.keys(schedule).length > 0;
   const normalized = {};
 
   days.forEach(day => {
     normalized[day.key] = {};
     hours.forEach(hour => {
-      normalized[day.key][String(hour)] = schedule?.[day.key]?.[String(hour)] === true;
+      normalized[day.key][String(hour)] = hasSchedule
+  ? schedule?.[day.key]?.[String(hour)] === true
+  : true;
     });
   });
 
