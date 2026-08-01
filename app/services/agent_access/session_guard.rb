@@ -53,6 +53,14 @@ class AgentAccess::SessionGuard
 
   private
 
+  def default_schedule
+    (0..6).each_with_object({}) do |day, schedule|
+      schedule[day.to_s] = (0..23).each_with_object({}) do |hour, hours|
+        hours[hour.to_s] = true
+      end
+    end
+  end
+
   def current_time
     Time.current.in_time_zone(TIME_ZONE)
   end
@@ -69,7 +77,7 @@ class AgentAccess::SessionGuard
     @policy ||= @account.agent_access_policies.find_or_create_by!(user: @user) do |access_policy|
       access_policy.enabled = true
       access_policy.max_sessions = 1
-      access_policy.schedule = {}
+      access_policy.schedule = default_schedule
     end
   end
 
