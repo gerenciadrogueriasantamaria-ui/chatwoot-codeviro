@@ -1,6 +1,4 @@
 class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
-  rescue_from StandardError, with: :render_labels_error
-
   before_action :current_account
   before_action :fetch_label, except: [:index, :create]
   before_action :check_authorization
@@ -43,12 +41,5 @@ class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
     source_params = params[:label].present? ? params.require(:label) : params
 
     source_params.permit(:title, :description, :color, :show_on_sidebar)
-  end
-
-  def render_labels_error(error)
-    Rails.logger.error("[LabelsController] #{error.class}: #{error.message}")
-    Rails.logger.error(error.backtrace.first(20).join("\n")) if error.backtrace.present?
-
-    render json: { error: "#{error.class}: #{error.message}" }, status: :unprocessable_entity
   end
 end
