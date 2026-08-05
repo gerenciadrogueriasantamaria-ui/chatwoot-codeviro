@@ -11,10 +11,20 @@ class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
 
   def create
     @label = Current.account.labels.create!(permitted_params)
+  rescue StandardError => e
+    Rails.logger.error("[LabelsController#create] #{e.class}: #{e.message}")
+    Rails.logger.error(e.backtrace.first(10).join("\n"))
+
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def update
     @label.update!(permitted_params)
+  rescue StandardError => e
+    Rails.logger.error("[LabelsController#update] #{e.class}: #{e.message}")
+    Rails.logger.error(e.backtrace.first(10).join("\n"))
+
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def destroy
@@ -38,8 +48,8 @@ class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
   end
 
   def permitted_params
-    label_params = params[:label].present? ? params.require(:label) : params
+    source_params = params[:label].present? ? params.require(:label) : params
 
-    label_params.permit(:title, :description, :color, :show_on_sidebar)
+    source_params.permit(:title, :description, :color, :show_on_sidebar)
   end
 end
