@@ -66,7 +66,13 @@ export const actions = {
       AnalyticsHelper.track(LABEL_EVENTS.CREATE);
       commit(types.ADD_LABEL, response.data);
     } catch (error) {
-      const errorMessage = error?.response?.data?.message;
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.response?.data?.errors?.join?.(', ') ||
+        error?.message ||
+        'No se pudo crear la etiqueta';
+
       throw new Error(errorMessage);
     } finally {
       commit(types.SET_LABEL_UI_FLAG, { isCreating: false });
