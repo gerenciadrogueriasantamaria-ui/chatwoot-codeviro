@@ -38,6 +38,8 @@ class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
   end
 
   def permitted_params
-    params.require(:label).permit(:title, :description, :color, :show_on_sidebar)
+    label_params = params[:label].present? ? params.require(:label) : params
+
+    label_params.permit(:title, :description, :color, :show_on_sidebar)
   end
 end
