@@ -10,7 +10,16 @@ class Api::V1::Accounts::BaseController < Api::BaseController
 
   def ensure_agent_access_session!
     return unless current_user
-    return if Current.account_user&.administrator?
+
+    current_account unless Current.account
+
+    return render_unauthorized('Account could not be found') unless Current.account
+
+    account_user = Current.account_user || Current.account.account_users.find_by(user_id: current_user.id)
+    Current.account_user = account_user
+
+    return render_unauthorized('You are not authorized to access this account') unless account_user
+    return if account_user.administrator?
 
     guard = AgentAccess::SessionGuard.new(
       user: current_user,
