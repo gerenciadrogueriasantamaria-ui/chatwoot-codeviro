@@ -570,6 +570,12 @@ const menuItems = computed(() => {
       ],
     },
     {
+      name: 'Kanban',
+      label: 'Kanban',
+      icon: 'i-lucide-kanban',
+      to: accountScopedRoute('kanban'),
+    },
+    {
       name: 'Campaigns',
       label: t('SIDEBAR.CAMPAIGNS'),
       icon: 'i-lucide-megaphone',
