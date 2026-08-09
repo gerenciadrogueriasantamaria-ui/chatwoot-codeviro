@@ -8,16 +8,24 @@ import ConversationApi from 'dashboard/api/inbox/conversation';
 import ConversationLabelsApi from 'dashboard/api/conversations';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
+const UNLABELED_COLUMN = {
+  id: '__unlabeled__',
+  title: 'Sin Etiqueta',
+  color: '#64748B',
+  isUnlabeled: true,
+};
+
 const store = useStore();
 const router = useRouter();
 
 const labels = useMapGetter('labels/getLabels');
 
-const conversationsByLabel = ref({});
+const allConversations = ref([]);
+const conversationsByColumn = ref({});
 const isLoading = ref(false);
 const movingConversationId = ref(null);
 const draggedConversation = ref(null);
-const draggedFromLabel = ref(null);
+const draggedFromColumn = ref(null);
 
 const visibleLabels = computed(() => {
   return [...labels.value]
@@ -25,20 +33,68 @@ const visibleLabels = computed(() => {
     .sort((a, b) => a.title.localeCompare(b.title));
 });
 
-const buildFilterPayload = labelTitle => {
-  return {
-    page: 1,
-    queryData: {
-      payload: [
-        {
-          attribute_key: 'labels',
-          filter_operator: 'equal_to',
-          values: [labelTitle],
-          query_operator: 'and',
-        },
-      ],
-    },
-  };
+const columns = computed(() => {
+  return [UNLABELED_COLUMN, ...visibleLabels.value];
+});
+
+const visibleLabelTitles = computed(() => {
+  return visibleLabels.value.map(label => label.title);
+});
+
+const getConversationLabels = conversation => {
+  return Array.isArray(conversation.labels) ? conversation.labels : [];
+};
+
+const getPrimaryColumnForConversation = conversation => {
+  const currentLabels = getConversationLabels(conversation);
+  const matchingLabel = visibleLabels.value.find(label =>
+    currentLabels.includes(label.title)
+  );
+
+  return matchingLabel?.title || UNLABELED_COLUMN.id;
+};
+
+const groupConversations = conversations => {
+  const grouped = columns.value.reduce((acc, column) => {
+    acc[column.title] = [];
+    return acc;
+  }, {});
+
+  grouped[UNLABELED_COLUMN.id] = [];
+
+  conversations.forEach(conversation => {
+    const columnKey = getPrimaryColumnForConversation(conversation);
+
+    if (columnKey === UNLABELED_COLUMN.id) {
+      grouped[UNLABELED_COLUMN.id].push(conversation);
+    } else {
+      grouped[columnKey].push(conversation);
+    }
+  });
+
+  conversationsByColumn.value = grouped;
+};
+
+const fetchOpenConversations = async () => {
+  const conversations = [];
+  let page = 1;
+  let keepLoading = true;
+
+  while (keepLoading && page <= 10) {
+    const response = await ConversationApi.get({
+      status: 'open',
+      assigneeType: 'all',
+      page,
+    });
+
+    const payload = response.data?.data?.payload || [];
+    conversations.push(...payload);
+
+    keepLoading = payload.length > 0;
+    page += 1;
+  }
+
+  return conversations;
 };
 
 const getConversationTitle = conversation => {
@@ -54,9 +110,7 @@ const getLastMessage = conversation => {
   const message = conversation?.messages?.[0];
 
   if (!message) return 'Sin mensajes';
-
   if (message.content) return message.content;
-
   if (message.attachments?.length) return 'Mensaje con adjunto';
 
   return 'Sin contenido';
@@ -78,25 +132,15 @@ const formatTimestamp = timestamp => {
   });
 };
 
-const fetchColumn = async label => {
-  const response = await ConversationApi.filter(buildFilterPayload(label.title));
-  conversationsByLabel.value = {
-    ...conversationsByLabel.value,
-    [label.title]: response.data.payload || [],
-  };
-};
-
 const fetchBoard = async () => {
   isLoading.value = true;
 
   try {
     await store.dispatch('labels/get');
 
-    await Promise.all(
-      visibleLabels.value.map(label => {
-        return fetchColumn(label);
-      })
-    );
+    const conversations = await fetchOpenConversations();
+    allConversations.value = conversations;
+    groupConversations(conversations);
   } catch (error) {
     useAlert('No se pudo cargar el tablero Kanban');
   } finally {
@@ -104,78 +148,112 @@ const fetchBoard = async () => {
   }
 };
 
-const onDragStart = (conversation, labelTitle) => {
+const onDragStart = (conversation, column) => {
   draggedConversation.value = conversation;
-  draggedFromLabel.value = labelTitle;
+  draggedFromColumn.value = column;
 };
 
 const onDragEnd = () => {
   draggedConversation.value = null;
-  draggedFromLabel.value = null;
+  draggedFromColumn.value = null;
 };
 
-const removeFromColumn = (labelTitle, conversationId) => {
-  conversationsByLabel.value = {
-    ...conversationsByLabel.value,
-    [labelTitle]: (conversationsByLabel.value[labelTitle] || []).filter(
+const getColumnKey = column => {
+  return column.isUnlabeled ? UNLABELED_COLUMN.id : column.title;
+};
+
+const removeFromColumn = (columnKey, conversationId) => {
+  conversationsByColumn.value = {
+    ...conversationsByColumn.value,
+    [columnKey]: (conversationsByColumn.value[columnKey] || []).filter(
       conversation => conversation.id !== conversationId
     ),
   };
 };
 
-const addToColumn = (labelTitle, conversation) => {
-  const currentColumn = conversationsByLabel.value[labelTitle] || [];
+const addToColumn = (columnKey, conversation) => {
+  const currentColumn = conversationsByColumn.value[columnKey] || [];
   const alreadyExists = currentColumn.some(item => item.id === conversation.id);
 
   if (alreadyExists) return;
 
-  conversationsByLabel.value = {
-    ...conversationsByLabel.value,
-    [labelTitle]: [
-      {
-        ...conversation,
-        labels: [
-          ...conversation.labels.filter(label => label !== draggedFromLabel.value),
-          labelTitle,
-        ],
-      },
-      ...currentColumn,
-    ],
+  conversationsByColumn.value = {
+    ...conversationsByColumn.value,
+    [columnKey]: [conversation, ...currentColumn],
   };
 };
 
-const onDrop = async targetLabel => {
-  const conversation = draggedConversation.value;
-  const sourceLabel = draggedFromLabel.value;
+const buildNewLabels = (conversation, sourceColumn, targetColumn) => {
+  const currentLabels = getConversationLabels(conversation);
+  const sourceColumnKey = getColumnKey(sourceColumn);
 
-  if (!conversation || !sourceLabel || sourceLabel === targetLabel.title) {
+  const labelsWithoutVisibleKanbanLabels = currentLabels.filter(label => {
+    if (sourceColumnKey === UNLABELED_COLUMN.id) return true;
+
+    return label !== sourceColumnKey;
+  });
+
+  if (targetColumn.isUnlabeled) {
+    return currentLabels.filter(label => !visibleLabelTitles.value.includes(label));
+  }
+
+  return [...new Set([...labelsWithoutVisibleKanbanLabels, targetColumn.title])];
+};
+
+const replaceConversationInMemory = updatedConversation => {
+  allConversations.value = allConversations.value.map(conversation => {
+    if (conversation.id !== updatedConversation.id) return conversation;
+
+    return updatedConversation;
+  });
+};
+
+const onDrop = async targetColumn => {
+  const conversation = draggedConversation.value;
+  const sourceColumn = draggedFromColumn.value;
+
+  if (!conversation || !sourceColumn) {
     onDragEnd();
     return;
   }
 
-  const oldLabels = conversation.labels || [];
-  const newLabels = [
-    ...oldLabels.filter(label => label !== sourceLabel),
-    targetLabel.title,
-  ];
+  const sourceKey = getColumnKey(sourceColumn);
+  const targetKey = getColumnKey(targetColumn);
+
+  if (sourceKey === targetKey) {
+    onDragEnd();
+    return;
+  }
+
+  const oldLabels = getConversationLabels(conversation);
+  const newLabels = buildNewLabels(conversation, sourceColumn, targetColumn);
+  const updatedConversation = {
+    ...conversation,
+    labels: newLabels,
+  };
 
   movingConversationId.value = conversation.id;
 
-  removeFromColumn(sourceLabel, conversation.id);
-  addToColumn(targetLabel.title, {
-    ...conversation,
-    labels: newLabels,
-  });
+  removeFromColumn(sourceKey, conversation.id);
+  addToColumn(targetKey, updatedConversation);
+  replaceConversationInMemory(updatedConversation);
 
   try {
     await ConversationLabelsApi.updateLabels(conversation.id, newLabels);
-    useAlert(`Conversación movida a ${targetLabel.title}`);
+    useAlert(
+      targetColumn.isUnlabeled
+        ? 'Conversación movida a Sin Etiqueta'
+        : `Conversación movida a ${targetColumn.title}`
+    );
   } catch (error) {
-    removeFromColumn(targetLabel.title, conversation.id);
-    addToColumn(sourceLabel, {
+    const revertedConversation = {
       ...conversation,
       labels: oldLabels,
-    });
+    };
+
+    removeFromColumn(targetKey, conversation.id);
+    addToColumn(sourceKey, revertedConversation);
+    replaceConversationInMemory(revertedConversation);
 
     useAlert('No se pudo mover la conversación');
   } finally {
@@ -211,7 +289,7 @@ onMounted(fetchBoard);
 
         <button
           type="button"
-          class="h-9 px-4 rounded-lg text-sm font-medium text-white bg-n-brand hover:bg-n-brand/90"
+          class="h-9 px-4 rounded-lg text-sm font-medium text-white bg-n-brand hover:bg-n-brand/90 disabled:opacity-60"
           :disabled="isLoading"
           @click="fetchBoard"
         >
@@ -226,56 +304,42 @@ onMounted(fetchBoard);
       </div>
 
       <div
-        v-else-if="!visibleLabels.length"
-        class="flex items-center justify-center h-full px-8"
-      >
-        <div class="max-w-md text-center">
-          <h2 class="m-0 text-base font-semibold text-n-slate-12">
-            No hay etiquetas visibles
-          </h2>
-          <p class="mt-2 mb-0 text-sm text-n-slate-11">
-            Crea etiquetas o actívalas para mostrarlas en la barra lateral.
-          </p>
-        </div>
-      </div>
-
-      <div
         v-else
         class="flex h-full gap-4 px-8 py-6 overflow-x-auto overflow-y-hidden"
       >
         <section
-          v-for="label in visibleLabels"
-          :key="label.id"
+          v-for="column in columns"
+          :key="getColumnKey(column)"
           class="flex flex-col flex-shrink-0 w-[320px] max-h-full rounded-xl border border-n-weak bg-n-alpha-1"
           @dragover.prevent
-          @drop="onDrop(label)"
+          @drop="onDrop(column)"
         >
           <header class="flex items-center justify-between gap-3 px-4 py-3 border-b border-n-weak">
             <div class="flex items-center min-w-0 gap-2">
               <span
                 class="flex-shrink-0 size-2.5 rounded-sm"
-                :style="{ backgroundColor: label.color }"
+                :style="{ backgroundColor: column.color }"
               />
               <h2 class="m-0 text-sm font-semibold truncate text-n-slate-12">
-                {{ label.title }}
+                {{ column.title }}
               </h2>
             </div>
 
             <span class="px-2 py-0.5 rounded-md text-xs font-medium text-n-slate-11 bg-n-alpha-2">
-              {{ conversationsByLabel[label.title]?.length || 0 }}
+              {{ conversationsByColumn[getColumnKey(column)]?.length || 0 }}
             </span>
           </header>
 
           <div class="flex-1 p-3 overflow-y-auto">
             <article
-              v-for="conversation in conversationsByLabel[label.title] || []"
+              v-for="conversation in conversationsByColumn[getColumnKey(column)] || []"
               :key="conversation.id"
               draggable="true"
               class="p-3 mb-3 transition-colors border rounded-lg cursor-grab border-n-weak bg-n-solid-1 hover:bg-n-alpha-2 active:cursor-grabbing"
               :class="{
                 'opacity-50 pointer-events-none': movingConversationId === conversation.id,
               }"
-              @dragstart="onDragStart(conversation, label.title)"
+              @dragstart="onDragStart(conversation, column)"
               @dragend="onDragEnd"
               @click="openConversation(conversation)"
             >
@@ -304,7 +368,7 @@ onMounted(fetchBoard);
             </article>
 
             <div
-              v-if="!(conversationsByLabel[label.title] || []).length"
+              v-if="!(conversationsByColumn[getColumnKey(column)] || []).length"
               class="flex items-center justify-center h-28 rounded-lg border border-dashed border-n-weak text-sm text-n-slate-10"
             >
               Sin conversaciones
