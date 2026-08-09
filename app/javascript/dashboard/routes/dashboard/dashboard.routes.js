@@ -13,6 +13,7 @@ import AppContainer from './Dashboard.vue';
 import Suspended from './suspended/Index.vue';
 import NoAccounts from './noAccounts/Index.vue';
 import OnboardingAccountDetails from './onboarding/Index.vue';
+import kanbanRoutes from './kanban/kanban.routes';
 
 export default {
   routes: [
@@ -24,6 +25,7 @@ export default {
         ...inboxRoutes,
         ...conversation.routes,
         ...settings.routes,
+        ...kanbanRoutes.routes,
         ...contactRoutes,
         ...companyRoutes,
         ...searchRoutes,
