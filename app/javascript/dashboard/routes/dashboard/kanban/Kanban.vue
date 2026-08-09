@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -15,6 +15,8 @@ const UNLABELED_COLUMN = {
   isUnlabeled: true,
 };
 
+const REFRESH_INTERVAL_MS = 8000;
+
 const store = useStore();
 const router = useRouter();
 
@@ -26,6 +28,8 @@ const isLoading = ref(false);
 const movingConversationId = ref(null);
 const draggedConversation = ref(null);
 const draggedFromColumn = ref(null);
+const refreshTimer = ref(null);
+const isRefreshingSilently = ref(false);
 
 const visibleLabels = computed(() => {
   return [...labels.value]
@@ -132,8 +136,12 @@ const formatTimestamp = timestamp => {
   });
 };
 
-const fetchBoard = async () => {
-  isLoading.value = true;
+const fetchBoard = async ({ silent = false } = {}) => {
+  if (silent) {
+    isRefreshingSilently.value = true;
+  } else {
+    isLoading.value = true;
+  }
 
   try {
     await store.dispatch('labels/get');
@@ -142,9 +150,45 @@ const fetchBoard = async () => {
     allConversations.value = conversations;
     groupConversations(conversations);
   } catch (error) {
-    useAlert('No se pudo cargar el tablero Kanban');
+    if (!silent) {
+      useAlert('No se pudo cargar el tablero Kanban');
+    }
   } finally {
     isLoading.value = false;
+    isRefreshingSilently.value = false;
+  }
+};
+
+const refreshBoardSilently = () => {
+  if (isLoading.value || movingConversationId.value) return;
+
+  fetchBoard({ silent: true });
+};
+
+const startAutoRefresh = () => {
+  stopAutoRefresh();
+
+  refreshTimer.value = window.setInterval(() => {
+    if (document.hidden) return;
+
+    refreshBoardSilently();
+  }, REFRESH_INTERVAL_MS);
+};
+
+const stopAutoRefresh = () => {
+  if (!refreshTimer.value) return;
+
+  window.clearInterval(refreshTimer.value);
+  refreshTimer.value = null;
+};
+
+const onWindowFocus = () => {
+  refreshBoardSilently();
+};
+
+const onVisibilityChange = () => {
+  if (!document.hidden) {
+    refreshBoardSilently();
   }
 };
 
@@ -271,7 +315,20 @@ const openConversation = conversation => {
   });
 };
 
-onMounted(fetchBoard);
+onMounted(() => {
+  fetchBoard();
+  startAutoRefresh();
+
+  window.addEventListener('focus', onWindowFocus);
+  document.addEventListener('visibilitychange', onVisibilityChange);
+});
+
+onUnmounted(() => {
+  stopAutoRefresh();
+
+  window.removeEventListener('focus', onWindowFocus);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+});
 </script>
 
 <template>
@@ -291,7 +348,7 @@ onMounted(fetchBoard);
           type="button"
           class="h-9 px-4 rounded-lg text-sm font-medium text-white bg-n-brand hover:bg-n-brand/90 disabled:opacity-60"
           :disabled="isLoading"
-          @click="fetchBoard"
+          @click="fetchBoard()"
         >
           Actualizar
         </button>
