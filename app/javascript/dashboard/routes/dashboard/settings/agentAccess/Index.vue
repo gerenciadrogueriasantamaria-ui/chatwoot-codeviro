@@ -40,7 +40,7 @@ const normalizeSchedule = schedule => {
     hours.forEach(hour => {
       normalized[day.key][String(hour)] = hasSchedule
   ? schedule?.[day.key]?.[String(hour)] === true
-  : true;
+  : false;
     });
   });
 
