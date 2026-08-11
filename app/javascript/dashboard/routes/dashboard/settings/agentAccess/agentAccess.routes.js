@@ -3,7 +3,7 @@ import SettingsWrapper from '../SettingsWrapper.vue';
 import Index from './Index.vue';
 
 const meta = {
-  permissions: ['administrator'],
+  permissions: ['administrator', 'supervisor'],
 };
 
 export default {
