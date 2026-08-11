@@ -46,12 +46,12 @@ class Api::V1::Accounts::AgentAccessPoliciesController < Api::V1::Accounts::Base
   private
 
   def default_schedule
-    (0..6).each_with_object({}) do |day, schedule|
-      schedule[day.to_s] = (0..23).each_with_object({}) do |hour, hours|
-        hours[hour.to_s] = true
-      end
+  (0..6).each_with_object({}) do |day, schedule|
+    schedule[day.to_s] = (0..23).each_with_object({}) do |hour, hours|
+      hours[hour.to_s] = false
     end
   end
+end
 
   def ensure_administrator!
     return if Current.account_user&.administrator?
