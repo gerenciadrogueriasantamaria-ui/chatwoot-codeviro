@@ -54,10 +54,10 @@ class Api::V1::Accounts::AgentAccessPoliciesController < Api::V1::Accounts::Base
 end
 
   def ensure_administrator!
-    return if Current.account_user&.administrator?
+  return if Current.account_user&.administrator? || Current.account_user&.supervisor?
 
-    render_unauthorized('You are not authorized to access agent access settings')
-  end
+  render_unauthorized('You are not authorized to access agent access settings')
+end
 
   def fetch_user
     @user = Current.account.users.find(params[:user_id])
