@@ -10,9 +10,32 @@ class Webhooks::WhatsappController < ActionController::API
       return
     end
 
-    Webhooks::WhatsappEventsJob.perform_now(params.to_unsafe_hash)
+    process_whatsapp_cloud_payload!
     head :ok
   end
+
+  def process_whatsapp_cloud_payload!
+  channel = whatsapp_channel
+  return if channel.blank?
+
+  if params.dig(:entry, 0, :changes, 0, :field) == 'smb_message_echoes'
+    Whatsapp::IncomingMessageWhatsappCloudService.new(
+      inbox: channel.inbox,
+      params: params.to_unsafe_hash,
+      outgoing_echo: true
+    ).perform
+  elsif channel.provider == 'whatsapp_cloud'
+    Whatsapp::IncomingMessageWhatsappCloudService.new(
+      inbox: channel.inbox,
+      params: params.to_unsafe_hash
+    ).perform
+  else
+    Whatsapp::IncomingMessageService.new(
+      inbox: channel.inbox,
+      params: params.to_unsafe_hash
+    ).perform
+  end
+end
 
   private
 
