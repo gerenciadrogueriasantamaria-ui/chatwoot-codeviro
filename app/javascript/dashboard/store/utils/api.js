@@ -101,16 +101,27 @@ export const clearCookiesOnLogout = () => {
 };
 
 export const parseAPIErrorResponse = error => {
+  if (error?.response?.status === 429) {
+    return 'Ya se alcanzó el máximo de sesiones de la cuenta.';
+  }
+
+  if (error?.response?.data?.error_code === 'max_sessions_reached') {
+    return 'Ya se alcanzó el máximo de sesiones de la cuenta.';
+  }
+
   if (error?.response?.data?.message) {
     return error?.response?.data?.message;
   }
+
   if (error?.response?.data?.error) {
     return error?.response?.data?.error;
   }
+
   if (error?.response?.data?.errors) {
     return error?.response?.data?.errors[0];
   }
-  return error;
+
+  return 'Hubo un error, por favor inténtelo de nuevo.';
 };
 
 export const throwErrorMessage = error => {
