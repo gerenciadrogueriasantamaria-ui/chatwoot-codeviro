@@ -21,6 +21,7 @@ const store = useStore();
 const router = useRouter();
 
 const inboxes = useMapGetter('inboxes/getInboxes');
+const labels = useMapGetter('labels/getLabels');
 
 const allConversations = ref([]);
 const conversationsByColumn = ref({});
@@ -126,7 +127,7 @@ const getAssigneeName = conversation => {
 
 const getInboxName = conversation => {
   const inboxId = Number(conversation?.inbox_id || conversation?.inbox?.id);
-  const inbox = inboxes.value.find(item => Number(item.id) === inboxId);
+  const inbox = (inboxes.value || []).find(item => Number(item.id) === inboxId);
 
   return inbox?.name || conversation?.inbox?.name || 'Sin canal';
 };
