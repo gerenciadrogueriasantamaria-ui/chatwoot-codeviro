@@ -124,6 +124,14 @@ const getAssigneeName = conversation => {
   return conversation?.meta?.assignee?.name || 'Sin asignar';
 };
 
+const getInboxName = conversation => {
+  return conversation?.inbox?.name || conversation?.meta?.channel || 'Sin canal';
+};
+
+const getColumnColor = column => {
+  return column?.color || UNLABELED_COLUMN.color;
+};
+
 const formatTimestamp = timestamp => {
   if (!timestamp) return '';
 
@@ -389,40 +397,58 @@ onUnmounted(() => {
 
           <div class="flex-1 p-3 overflow-y-auto">
             <article
-              v-for="conversation in conversationsByColumn[getColumnKey(column)] || []"
-              :key="conversation.id"
-              draggable="true"
-              class="p-3 mb-3 transition-colors border rounded-lg cursor-grab border-n-weak bg-n-solid-1 hover:bg-n-alpha-2 active:cursor-grabbing"
-              :class="{
-                'opacity-50 pointer-events-none': movingConversationId === conversation.id,
-              }"
-              @dragstart="onDragStart(conversation, column)"
-              @dragend="onDragEnd"
-              @click="openConversation(conversation)"
-            >
-              <div class="flex items-start justify-between gap-2">
-                <h3 class="m-0 text-sm font-semibold leading-5 text-n-slate-12 line-clamp-2">
-                  {{ getConversationTitle(conversation) }}
-                </h3>
+  v-for="conversation in conversationsByColumn[getColumnKey(column)] || []"
+  :key="conversation.id"
+  draggable="true"
+  class="p-3 mb-3 transition-colors border rounded-lg cursor-grab border-n-weak bg-n-solid-1 hover:bg-n-alpha-2 active:cursor-grabbing"
+  :class="{
+    'opacity-50 pointer-events-none': movingConversationId === conversation.id,
+  }"
+  @dragstart="onDragStart(conversation, column)"
+  @dragend="onDragEnd"
+>
+  <div class="flex items-start justify-between gap-2">
+    <h3 class="m-0 text-sm font-semibold leading-5 text-n-slate-12 line-clamp-2">
+      {{ getConversationTitle(conversation) }}
+    </h3>
 
-                <span class="flex-shrink-0 text-xs text-n-slate-10">
-                  #{{ conversation.id }}
-                </span>
-              </div>
+    <span class="flex-shrink-0 text-xs text-n-slate-10">
+      #{{ conversation.id }}
+    </span>
+  </div>
 
-              <p class="mt-2 mb-0 text-sm leading-5 text-n-slate-11 line-clamp-2">
-                {{ getLastMessage(conversation) }}
-              </p>
+  <div class="flex items-center gap-2 mt-2 text-xs text-n-slate-10">
+    <span
+      class="flex-shrink-0 size-2 rounded-sm"
+      :style="{ backgroundColor: getColumnColor(column) }"
+    />
+    <span class="truncate">
+      {{ getInboxName(conversation) }}
+    </span>
+  </div>
 
-              <footer class="flex items-center justify-between gap-3 mt-3 text-xs text-n-slate-10">
-                <span class="truncate">
-                  {{ getAssigneeName(conversation) }}
-                </span>
-                <span class="flex-shrink-0">
-                  {{ formatTimestamp(conversation.timestamp) }}
-                </span>
-              </footer>
-            </article>
+  <p class="mt-2 mb-0 text-sm leading-5 text-n-slate-11 line-clamp-2">
+    {{ getLastMessage(conversation) }}
+  </p>
+
+  <footer class="flex items-center justify-between gap-3 mt-3 text-xs text-n-slate-10">
+    <span class="truncate">
+      {{ getAssigneeName(conversation) }}
+    </span>
+    <span class="flex-shrink-0">
+      {{ formatTimestamp(conversation.timestamp) }}
+    </span>
+  </footer>
+
+  <button
+    type="button"
+    class="w-full h-8 mt-3 rounded-md text-xs font-semibold text-white transition-opacity hover:opacity-90"
+    :style="{ backgroundColor: getColumnColor(column) }"
+    @click.stop="openConversation(conversation)"
+  >
+    Ir a la conversación
+  </button>
+</article>
 
             <div
               v-if="!(conversationsByColumn[getColumnKey(column)] || []).length"
