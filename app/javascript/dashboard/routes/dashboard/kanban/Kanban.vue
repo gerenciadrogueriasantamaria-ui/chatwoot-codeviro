@@ -20,7 +20,7 @@ const REFRESH_INTERVAL_MS = 8000;
 const store = useStore();
 const router = useRouter();
 
-const labels = useMapGetter('labels/getLabels');
+const inboxes = useMapGetter('inboxes/getInboxes');
 
 const allConversations = ref([]);
 const conversationsByColumn = ref({});
@@ -125,7 +125,10 @@ const getAssigneeName = conversation => {
 };
 
 const getInboxName = conversation => {
-  return conversation?.inbox?.name || conversation?.meta?.channel || 'Sin canal';
+  const inboxId = Number(conversation?.inbox_id || conversation?.inbox?.id);
+  const inbox = inboxes.value.find(item => Number(item.id) === inboxId);
+
+  return inbox?.name || conversation?.inbox?.name || 'Sin canal';
 };
 
 const getColumnColor = column => {
@@ -152,7 +155,10 @@ const fetchBoard = async ({ silent = false } = {}) => {
   }
 
   try {
-    await store.dispatch('labels/get');
+    await Promise.all([
+      store.dispatch('labels/get'),
+      store.dispatch('inboxes/get'),
+    ]);
 
     const conversations = await fetchOpenConversations();
     allConversations.value = conversations;
