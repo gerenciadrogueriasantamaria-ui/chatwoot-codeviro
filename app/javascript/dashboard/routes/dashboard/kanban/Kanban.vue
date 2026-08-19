@@ -31,6 +31,7 @@ const draggedConversation = ref(null);
 const draggedFromColumn = ref(null);
 const refreshTimer = ref(null);
 const isRefreshingSilently = ref(false);
+const selectedInboxId = ref('all');
 
 const visibleLabels = computed(() => {
   return [...labels.value]
@@ -40,6 +41,32 @@ const visibleLabels = computed(() => {
 
 const columns = computed(() => {
   return [UNLABELED_COLUMN, ...visibleLabels.value];
+});
+
+const sortedInboxes = computed(() => {
+  return [...(inboxes.value || [])].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+});
+
+const inboxFilters = computed(() => {
+  return [
+    {
+      id: 'all',
+      name: 'Todos',
+    },
+    ...sortedInboxes.value,
+  ];
+});
+
+const selectedInboxName = computed(() => {
+  if (selectedInboxId.value === 'all') return 'Todos los canales';
+
+  const inbox = sortedInboxes.value.find(
+    item => String(item.id) === String(selectedInboxId.value)
+  );
+
+  return inbox?.name || 'Canal seleccionado';
 });
 
 const visibleLabelTitles = computed(() => {
@@ -89,6 +116,7 @@ const fetchOpenConversations = async () => {
     const response = await ConversationApi.get({
       status: 'open',
       assigneeType: 'all',
+      inboxId: selectedInboxId.value === 'all' ? undefined : selectedInboxId.value,
       page,
     });
 
@@ -330,6 +358,11 @@ const openConversation = conversation => {
   });
 };
 
+const selectInbox = inboxId => {
+  selectedInboxId.value = inboxId;
+  fetchBoard();
+};
+
 onMounted(() => {
   fetchBoard();
   startAutoRefresh();
@@ -369,6 +402,38 @@ onUnmounted(() => {
         </button>
       </div>
     </header>
+    <nav class="px-8 pt-4 border-b border-n-weak">
+  <div class="flex items-center gap-3 mb-3">
+    <span class="text-sm font-medium text-n-slate-11">
+      Canales
+    </span>
+    <span class="text-xs text-n-slate-10">
+      {{ selectedInboxName }}
+    </span>
+  </div>
+
+  <div class="flex gap-2 pb-4 overflow-x-auto">
+    <button
+      v-for="inbox in inboxFilters"
+      :key="inbox.id"
+      type="button"
+      class="flex items-center flex-shrink-0 gap-2 px-3 py-2 text-sm rounded-lg transition-colors"
+      :class="
+        String(selectedInboxId) === String(inbox.id)
+          ? 'text-n-slate-12 bg-n-alpha-2 font-semibold'
+          : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-1'
+      "
+      @click="selectInbox(inbox.id)"
+    >
+      <span class="text-n-slate-10">
+        {}
+      </span>
+      <span class="max-w-[180px] truncate">
+        {{ inbox.name }}
+      </span>
+    </button>
+  </div>
+</nav>
 
     <main class="flex-1 overflow-hidden">
       <div v-if="isLoading" class="flex items-center justify-center h-full">
