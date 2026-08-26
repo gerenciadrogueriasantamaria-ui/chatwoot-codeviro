@@ -3,13 +3,14 @@ class Api::V1::Accounts::Conversations::LabelsController < Api::V1::Accounts::Co
 
   def create
     labels = Array(params[:labels]).compact_blank
+    selected_label = labels.last
 
-    @conversation.label_list = labels.first.present? ? [labels.first] : []
+    @conversation.label_list = selected_label.present? ? [selected_label] : []
     @conversation.save!
   end
 
   def destroy
-    @conversation.label_list = []
+    @conversation.label_list.remove(params[:id])
     @conversation.save!
   end
 
