@@ -551,7 +551,6 @@ onUnmounted(() => {
   />
 </div>
 </nav>
-    </nav>
 
     <main class="flex-1 overflow-hidden">
       <div v-if="isLoading" class="flex items-center justify-center h-full">
