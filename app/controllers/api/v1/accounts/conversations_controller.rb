@@ -61,7 +61,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def kanban
-  authorize Current.account, :show?
+  return head :forbidden unless Current.account_user&.administrator?
 
   per_page = [[params[:per_page].to_i, 1].max, 100].min
   page = [params[:page].to_i, 1].max
@@ -73,7 +73,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
                                       .pluck(:title)
 
   conversations = Current.account.conversations
-                                 .includes(:assignee, :inbox, { contact: { avatar_attachment: :blob } }, :taggings)
+                                 .includes(:assignee, :inbox, { contact: { avatar_attachment: :blob } })
                                  .where(status: [:open, :resolved])
                                  .order(last_activity_at: :desc)
 
@@ -82,11 +82,19 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   conversations =
     if column == '__unlabeled__'
       if visible_label_titles.present?
-        conversations.where(
-          'conversations.cached_label_list IS NULL OR conversations.cached_label_list = ? OR NOT (conversations.cached_label_list && ARRAY[?]::varchar[])',
-          '',
-          visible_label_titles
-        )
+        quoted_titles = visible_label_titles.map { |title| ActiveRecord::Base.connection.quote(title) }.join(',')
+
+        conversations.where(<<~SQL.squish)
+          NOT EXISTS (
+            SELECT 1
+            FROM taggings
+            INNER JOIN tags ON tags.id = taggings.tag_id
+            WHERE taggings.taggable_type = 'Conversation'
+              AND taggings.taggable_id = conversations.id
+              AND taggings.context = 'labels'
+              AND tags.name IN (#{quoted_titles})
+          )
+        SQL
       else
         conversations
       end
@@ -95,6 +103,17 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     else
       conversations.none
     end
+
+  total = conversations.count
+  records = conversations.page(page).per(per_page)
+
+  render json: {
+    payload: records.map(&:push_event_data),
+    total: total,
+    page: page,
+    per_page: per_page
+  }
+end
 
   total = conversations.count
   records = conversations.page(page).per(per_page)
