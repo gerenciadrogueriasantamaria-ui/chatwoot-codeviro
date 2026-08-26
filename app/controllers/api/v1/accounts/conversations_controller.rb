@@ -67,6 +67,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   page = [params[:page].to_i, 1].max
   column = params[:column].presence
   inbox_id = params[:inbox_id].presence
+  search_query = params[:q].to_s.strip
 
   visible_label_titles = Current.account.labels
                                       .where(show_on_sidebar: true)
@@ -78,6 +79,16 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
                                  .order(last_activity_at: :desc)
 
   conversations = conversations.where(inbox_id: inbox_id) if inbox_id.present?
+
+    if search_query.present?
+  sanitized_query = ActiveRecord::Base.sanitize_sql_like(search_query)
+  search_term = "%#{sanitized_query}%"
+
+  conversations = conversations.left_joins(:contact, :contact_inbox).where(
+    'contacts.name ILIKE :search OR contacts.phone_number ILIKE :search OR contact_inboxes.source_id ILIKE :search',
+    search: search_term
+  )
+end
 
   conversations =
     if column == '__unlabeled__'
