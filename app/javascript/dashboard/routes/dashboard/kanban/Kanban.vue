@@ -176,18 +176,12 @@ const fetchKanbanColumn = async (column, page = 1, { append = false } = {}) => {
   };
 
   try {
-    const response = await ConversationApi.axios.get(
-      `${ConversationApi.url}/kanban`,
-      {
-        params: {
-          column: columnKey,
-          inbox_id:
-            selectedInboxId.value === 'all' ? undefined : selectedInboxId.value,
-          page,
-          per_page: PAGE_SIZE,
-        },
-      }
-    );
+    const response = await ConversationApi.kanban({
+  column: columnKey,
+  inboxId: selectedInboxId.value === 'all' ? undefined : selectedInboxId.value,
+  page,
+  perPage: PAGE_SIZE,
+});
 
     const payload = response.data?.payload || [];
     const total = response.data?.total || 0;
