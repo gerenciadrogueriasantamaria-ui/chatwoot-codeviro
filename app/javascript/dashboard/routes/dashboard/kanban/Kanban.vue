@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -37,6 +37,8 @@ const draggedFromColumn = ref(null);
 const refreshTimer = ref(null);
 const isRefreshingSilently = ref(false);
 const selectedInboxId = ref('all');
+const searchQuery = ref('');
+let searchTimer = null;
 
 const visibleLabels = computed(() => {
   return [...(labels.value || [])]
@@ -130,6 +132,18 @@ const getInboxName = conversation => {
   return inbox?.name || conversation?.inbox?.name || 'Sin canal';
 };
 
+const getContactPhone = conversation => {
+  return (
+    conversation?.meta?.sender?.phone_number ||
+    conversation?.meta?.sender?.identifier ||
+    conversation?.contact?.phone_number ||
+    conversation?.contact?.identifier ||
+    conversation?.contact_inbox?.source_id ||
+    conversation?.source_id ||
+    ''
+  );
+};
+
 const formatTimestamp = timestamp => {
   if (!timestamp) return '';
 
@@ -179,6 +193,7 @@ const fetchKanbanColumn = async (column, page = 1, { append = false } = {}) => {
     const response = await ConversationApi.kanban({
   column: columnKey,
   inboxId: selectedInboxId.value === 'all' ? undefined : selectedInboxId.value,
+  search: searchQuery.value.trim() || undefined,
   page,
   perPage: PAGE_SIZE,
 });
@@ -441,6 +456,14 @@ const selectInbox = inboxId => {
   fetchBoard();
 };
 
+watch(searchQuery, () => {
+  clearTimeout(searchTimer);
+
+  searchTimer = setTimeout(() => {
+    fetchBoard();
+  }, 350);
+});
+
 onMounted(() => {
   fetchBoard();
   startAutoRefresh();
@@ -451,6 +474,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopAutoRefresh();
+  clearTimeout(searchTimer);
 
   window.removeEventListener('focus', onWindowFocus);
   document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -512,6 +536,19 @@ onUnmounted(() => {
           </span>
         </button>
       </div>
+      <div class="relative max-w-sm pb-4">
+  <fluent-icon
+    icon="search"
+    size="16"
+    class="absolute text-n-slate-10 left-3 top-2.5"
+  />
+  <input
+    v-model="searchQuery"
+    type="search"
+    class="w-full h-9 pl-9 pr-3 text-sm border rounded-lg outline-none text-n-slate-12 bg-n-alpha-1 border-n-weak placeholder:text-n-slate-10 focus:border-n-brand"
+    placeholder="Buscar por nombre o celular"
+  />
+</div>
     </nav>
 
     <main class="flex-1 overflow-hidden">
@@ -590,6 +627,13 @@ onUnmounted(() => {
                   {{ getStatusLabel(conversation) }}
                 </span>
               </div>
+
+              <p
+  v-if="getContactPhone(conversation)"
+  class="mt-2 mb-0 text-xs text-n-slate-10 truncate"
+>
+  {{ getContactPhone(conversation) }}
+</p>
 
               <p class="mt-2 mb-0 text-sm leading-5 text-n-slate-11 line-clamp-2">
                 {{ getLastMessage(conversation) }}
