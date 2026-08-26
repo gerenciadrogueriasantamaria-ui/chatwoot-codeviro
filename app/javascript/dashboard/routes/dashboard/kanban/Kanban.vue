@@ -538,11 +538,9 @@ onUnmounted(() => {
 </div>
 
 <div class="relative max-w-sm pb-4">
-  <fluent-icon
-    icon="search"
-    size="16"
-    class="absolute text-n-slate-10 left-3 top-[10px] pointer-events-none"
-  />
+  <span class="absolute left-3 top-[9px] text-sm leading-none text-n-slate-10 pointer-events-none">
+    🔍
+  </span>
   <input
     v-model="searchQuery"
     type="search"
