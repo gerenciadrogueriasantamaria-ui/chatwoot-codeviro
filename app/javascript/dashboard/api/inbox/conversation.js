@@ -32,6 +32,17 @@ class ConversationApi extends ApiClient {
     });
   }
 
+  kanban({ column, inboxId, page, perPage }) {
+  return axios.get(`${this.url}/kanban`, {
+    params: {
+      column,
+      inbox_id: inboxId,
+      page,
+      per_page: perPage,
+    },
+  });
+}
+
   filter(payload) {
     return axios.post(`${this.url}/filter`, payload.queryData, {
       params: {
