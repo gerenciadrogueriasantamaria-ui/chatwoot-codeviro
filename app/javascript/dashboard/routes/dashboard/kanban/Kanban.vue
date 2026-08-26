@@ -544,11 +544,11 @@ onUnmounted(() => {
     class="flex-shrink-0 mr-2 text-n-slate-10"
   />
   <input
-    v-model="searchQuery"
-    type="text"
-    class="kanban-search-input flex-1 min-w-0 w-full h-full p-0 m-0 text-sm leading-9 border-none outline-none bg-transparent shadow-none appearance-none text-n-slate-12 placeholder:text-n-slate-10 focus:border-none focus:outline-none focus:ring-0"
-    placeholder="Buscar por nombre o celular"
-  />
+  v-model="searchQuery"
+  type="text"
+  class="kanban-search-input flex-1 min-w-0 w-full h-full text-sm leading-9 bg-transparent text-n-slate-12 placeholder:text-n-slate-10"
+  placeholder="Buscar por nombre o celular"
+/>
 </div>
 </nav>
 
@@ -685,3 +685,25 @@ onUnmounted(() => {
     </main>
   </section>
 </template>
+
+<style scoped>
+:deep(.kanban-search-input) {
+  width: 100%;
+  height: 100%;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: rgb(var(--slate-12));
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+:deep(.kanban-search-input:focus) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+</style>
