@@ -516,27 +516,28 @@ onUnmounted(() => {
       </div>
 
       <div class="flex gap-2 pb-4 overflow-x-auto">
-        <button
-          v-for="inbox in inboxFilters"
-          :key="inbox.id"
-          type="button"
-          class="flex items-center flex-shrink-0 gap-2 px-3 py-2 text-sm rounded-lg transition-colors"
-          :class="
-            String(selectedInboxId) === String(inbox.id)
-              ? 'text-n-slate-12 bg-n-alpha-2 font-semibold'
-              : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-1'
-          "
-          @click="selectInbox(inbox.id)"
-        >
-          <span class="text-n-slate-10">
-            {}
-          </span>
-          <span class="max-w-[180px] truncate">
-            {{ inbox.name }}
-          </span>
-        </button>
-      </div>
-      <div class="relative max-w-sm pb-4">
+  <button
+    v-for="inbox in inboxFilters"
+    :key="inbox.id"
+    type="button"
+    class="flex items-center flex-shrink-0 gap-2 px-3 py-2 text-sm rounded-lg transition-colors"
+    :class="
+      String(selectedInboxId) === String(inbox.id)
+        ? 'text-n-slate-12 bg-n-alpha-2 font-semibold'
+        : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-1'
+    "
+    @click="selectInbox(inbox.id)"
+  >
+    <span class="text-n-slate-10">
+      {}
+    </span>
+    <span class="max-w-[180px] truncate">
+      {{ inbox.name }}
+    </span>
+  </button>
+</div>
+
+<div class="relative max-w-sm pb-4">
   <fluent-icon
     icon="search"
     size="16"
@@ -549,7 +550,7 @@ onUnmounted(() => {
     placeholder="Buscar por nombre o celular"
   />
 </div>
-</div>
+</nav>
     </nav>
 
     <main class="flex-1 overflow-hidden">
