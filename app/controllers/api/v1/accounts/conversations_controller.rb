@@ -115,17 +115,6 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   }
 end
 
-  total = conversations.count
-  records = conversations.page(page).per(per_page)
-
-  render json: {
-    payload: records.map(&:push_event_data),
-    total: total,
-    page: page,
-    per_page: per_page
-  }
-end
-
   def mute
     @conversation.mute!
     head :ok
