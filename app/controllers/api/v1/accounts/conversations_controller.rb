@@ -80,19 +80,29 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   conversations = conversations.where(inbox_id: inbox_id) if inbox_id.present?
 
   conversations =
-  if column == '__unlabeled__'
-    conversations.where.not(
-      id: ActsAsTaggableOn::Tagging
-        .joins(:tag)
-        .where(taggable_type: 'Conversation', context: 'labels')
-        .where(tags: { name: visible_label_titles })
-        .select(:taggable_id)
-    )
-  elsif visible_label_titles.include?(column)
-    conversations.tagged_with(column, on: :labels)
-  else
-    conversations.none
-  end
+    if column == '__unlabeled__'
+      if visible_label_titles.present?
+        quoted_titles = visible_label_titles.map { |title| ActiveRecord::Base.connection.quote(title) }.join(',')
+
+        conversations.where(<<~SQL.squish)
+          NOT EXISTS (
+            SELECT 1
+            FROM taggings
+            INNER JOIN tags ON tags.id = taggings.tag_id
+            WHERE taggings.taggable_type = 'Conversation'
+              AND taggings.taggable_id = conversations.id
+              AND taggings.context = 'labels'
+              AND tags.name IN (#{quoted_titles})
+          )
+        SQL
+      else
+        conversations
+      end
+    elsif visible_label_titles.include?(column)
+      conversations.tagged_with(column, on: :labels)
+    else
+      conversations.none
+    end
 
   total = conversations.count
   records = conversations.page(page).per(per_page)
