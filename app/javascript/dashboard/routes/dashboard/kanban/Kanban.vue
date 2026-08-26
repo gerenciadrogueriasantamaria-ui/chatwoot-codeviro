@@ -537,14 +537,16 @@ onUnmounted(() => {
   </button>
 </div>
 
-<div class="relative max-w-sm pb-4">
-  <span class="absolute left-3 top-[9px] text-sm leading-none text-n-slate-10 pointer-events-none">
-    🔍
-  </span>
+<div class="flex items-center max-w-sm h-9 px-3 gap-2 pb-0 mb-4 border rounded-lg bg-n-alpha-1 border-n-weak focus-within:border-n-brand">
+  <fluent-icon
+    icon="search"
+    size="16"
+    class="flex-shrink-0 text-n-slate-10"
+  />
   <input
     v-model="searchQuery"
     type="search"
-    class="w-full h-9 py-0 pl-10 pr-3 text-sm leading-9 border rounded-lg outline-none text-n-slate-12 bg-n-alpha-1 border-n-weak placeholder:text-n-slate-10 focus:border-n-brand"
+    class="flex-1 min-w-0 h-full py-0 text-sm border-0 outline-none bg-transparent text-n-slate-12 placeholder:text-n-slate-10"
     placeholder="Buscar por nombre o celular"
   />
 </div>
