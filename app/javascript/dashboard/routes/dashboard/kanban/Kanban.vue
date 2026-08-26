@@ -16,6 +16,8 @@ const UNLABELED_COLUMN = {
 };
 
 const REFRESH_INTERVAL_MS = 8000;
+const PAGE_SIZE = 100;
+const LOAD_MORE_OFFSET = 120;
 
 const store = useStore();
 const router = useRouter();
@@ -23,8 +25,11 @@ const router = useRouter();
 const inboxes = useMapGetter('inboxes/getInboxes');
 const labels = useMapGetter('labels/getLabels');
 
-const allConversations = ref([]);
 const conversationsByColumn = ref({});
+const columnTotals = ref({});
+const columnPages = ref({});
+const columnHasMore = ref({});
+const columnLoading = ref({});
 const isLoading = ref(false);
 const movingConversationId = ref(null);
 const draggedConversation = ref(null);
@@ -34,7 +39,7 @@ const isRefreshingSilently = ref(false);
 const selectedInboxId = ref('all');
 
 const visibleLabels = computed(() => {
-  return [...labels.value]
+  return [...(labels.value || [])]
     .filter(label => label.show_on_sidebar)
     .sort((a, b) => a.title.localeCompare(b.title));
 });
@@ -73,61 +78,26 @@ const visibleLabelTitles = computed(() => {
   return visibleLabels.value.map(label => label.title);
 });
 
+const getColumnKey = column => {
+  return column.isUnlabeled ? UNLABELED_COLUMN.id : column.title;
+};
+
 const getConversationLabels = conversation => {
   return Array.isArray(conversation.labels) ? conversation.labels : [];
 };
 
-const getPrimaryColumnForConversation = conversation => {
-  const currentLabels = getConversationLabels(conversation);
-  const matchingLabel = visibleLabels.value.find(label =>
-    currentLabels.includes(label.title)
-  );
-
-  return matchingLabel?.title || UNLABELED_COLUMN.id;
+const getColumnColor = column => {
+  return column?.color || UNLABELED_COLUMN.color;
 };
 
-const groupConversations = conversations => {
-  const grouped = columns.value.reduce((acc, column) => {
-    acc[column.title] = [];
-    return acc;
-  }, {});
-
-  grouped[UNLABELED_COLUMN.id] = [];
-
-  conversations.forEach(conversation => {
-    const columnKey = getPrimaryColumnForConversation(conversation);
-
-    if (columnKey === UNLABELED_COLUMN.id) {
-      grouped[UNLABELED_COLUMN.id].push(conversation);
-    } else {
-      grouped[columnKey].push(conversation);
-    }
-  });
-
-  conversationsByColumn.value = grouped;
+const getStatusLabel = conversation => {
+  return conversation.status === 'resolved' ? 'Cerrada' : 'Abierta';
 };
 
-const fetchOpenConversations = async () => {
-  const conversations = [];
-  let page = 1;
-  let keepLoading = true;
-
-  while (keepLoading && page <= 10) {
-    const response = await ConversationApi.get({
-      status: 'open',
-      assigneeType: 'all',
-      inboxId: selectedInboxId.value === 'all' ? undefined : selectedInboxId.value,
-      page,
-    });
-
-    const payload = response.data?.data?.payload || [];
-    conversations.push(...payload);
-
-    keepLoading = payload.length > 0;
-    page += 1;
-  }
-
-  return conversations;
+const getStatusClasses = conversation => {
+  return conversation.status === 'resolved'
+    ? 'text-green-300 bg-green-900/30'
+    : 'text-blue-300 bg-blue-900/30';
 };
 
 const getConversationTitle = conversation => {
@@ -160,10 +130,6 @@ const getInboxName = conversation => {
   return inbox?.name || conversation?.inbox?.name || 'Sin canal';
 };
 
-const getColumnColor = column => {
-  return column?.color || UNLABELED_COLUMN.color;
-};
-
 const formatTimestamp = timestamp => {
   if (!timestamp) return '';
 
@@ -174,6 +140,87 @@ const formatTimestamp = timestamp => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+const resetColumnState = () => {
+  const conversations = {};
+  const totals = {};
+  const pages = {};
+  const hasMore = {};
+  const loading = {};
+
+  columns.value.forEach(column => {
+    const key = getColumnKey(column);
+    conversations[key] = [];
+    totals[key] = 0;
+    pages[key] = 0;
+    hasMore[key] = true;
+    loading[key] = false;
+  });
+
+  conversationsByColumn.value = conversations;
+  columnTotals.value = totals;
+  columnPages.value = pages;
+  columnHasMore.value = hasMore;
+  columnLoading.value = loading;
+};
+
+const fetchKanbanColumn = async (column, page = 1, { append = false } = {}) => {
+  const columnKey = getColumnKey(column);
+
+  if (columnLoading.value[columnKey]) return;
+
+  columnLoading.value = {
+    ...columnLoading.value,
+    [columnKey]: true,
+  };
+
+  try {
+    const response = await ConversationApi.axios.get(
+      `${ConversationApi.url}/kanban`,
+      {
+        params: {
+          column: columnKey,
+          inbox_id:
+            selectedInboxId.value === 'all' ? undefined : selectedInboxId.value,
+          page,
+          per_page: PAGE_SIZE,
+        },
+      }
+    );
+
+    const payload = response.data?.payload || [];
+    const total = response.data?.total || 0;
+
+    conversationsByColumn.value = {
+      ...conversationsByColumn.value,
+      [columnKey]: append
+        ? [...(conversationsByColumn.value[columnKey] || []), ...payload]
+        : payload,
+    };
+
+    columnTotals.value = {
+      ...columnTotals.value,
+      [columnKey]: total,
+    };
+
+    columnPages.value = {
+      ...columnPages.value,
+      [columnKey]: page,
+    };
+
+    columnHasMore.value = {
+      ...columnHasMore.value,
+      [columnKey]: page * PAGE_SIZE < total,
+    };
+  } catch (error) {
+    useAlert('No se pudo cargar una columna del Kanban');
+  } finally {
+    columnLoading.value = {
+      ...columnLoading.value,
+      [columnKey]: false,
+    };
+  }
 };
 
 const fetchBoard = async ({ silent = false } = {}) => {
@@ -189,9 +236,11 @@ const fetchBoard = async ({ silent = false } = {}) => {
       store.dispatch('inboxes/get'),
     ]);
 
-    const conversations = await fetchOpenConversations();
-    allConversations.value = conversations;
-    groupConversations(conversations);
+    resetColumnState();
+
+    await Promise.all(
+      columns.value.map(column => fetchKanbanColumn(column, 1))
+    );
   } catch (error) {
     if (!silent) {
       useAlert('No se pudo cargar el tablero Kanban');
@@ -199,6 +248,26 @@ const fetchBoard = async ({ silent = false } = {}) => {
   } finally {
     isLoading.value = false;
     isRefreshingSilently.value = false;
+  }
+};
+
+const loadMoreColumn = async column => {
+  const columnKey = getColumnKey(column);
+
+  if (!columnHasMore.value[columnKey] || columnLoading.value[columnKey]) return;
+
+  await fetchKanbanColumn(column, (columnPages.value[columnKey] || 1) + 1, {
+    append: true,
+  });
+};
+
+const onColumnScroll = (event, column) => {
+  const target = event.target;
+  const distanceToBottom =
+    target.scrollHeight - target.scrollTop - target.clientHeight;
+
+  if (distanceToBottom <= LOAD_MORE_OFFSET) {
+    loadMoreColumn(column);
   }
 };
 
@@ -245,16 +314,17 @@ const onDragEnd = () => {
   draggedFromColumn.value = null;
 };
 
-const getColumnKey = column => {
-  return column.isUnlabeled ? UNLABELED_COLUMN.id : column.title;
-};
-
 const removeFromColumn = (columnKey, conversationId) => {
   conversationsByColumn.value = {
     ...conversationsByColumn.value,
     [columnKey]: (conversationsByColumn.value[columnKey] || []).filter(
       conversation => conversation.id !== conversationId
     ),
+  };
+
+  columnTotals.value = {
+    ...columnTotals.value,
+    [columnKey]: Math.max((columnTotals.value[columnKey] || 0) - 1, 0),
   };
 };
 
@@ -267,6 +337,11 @@ const addToColumn = (columnKey, conversation) => {
   conversationsByColumn.value = {
     ...conversationsByColumn.value,
     [columnKey]: [conversation, ...currentColumn],
+  };
+
+  columnTotals.value = {
+    ...columnTotals.value,
+    [columnKey]: (columnTotals.value[columnKey] || 0) + 1,
   };
 };
 
@@ -281,17 +356,26 @@ const buildNewLabels = (conversation, sourceColumn, targetColumn) => {
   });
 
   if (targetColumn.isUnlabeled) {
-    return currentLabels.filter(label => !visibleLabelTitles.value.includes(label));
+    return currentLabels.filter(
+      label => !visibleLabelTitles.value.includes(label)
+    );
   }
 
   return [...new Set([...labelsWithoutVisibleKanbanLabels, targetColumn.title])];
 };
 
 const replaceConversationInMemory = updatedConversation => {
-  allConversations.value = allConversations.value.map(conversation => {
-    if (conversation.id !== updatedConversation.id) return conversation;
+  Object.keys(conversationsByColumn.value).forEach(columnKey => {
+    conversationsByColumn.value = {
+      ...conversationsByColumn.value,
+      [columnKey]: (conversationsByColumn.value[columnKey] || []).map(
+        conversation => {
+          if (conversation.id !== updatedConversation.id) return conversation;
 
-    return updatedConversation;
+          return updatedConversation;
+        }
+      ),
+    };
   });
 };
 
@@ -388,7 +472,7 @@ onUnmounted(() => {
             Kanban
           </h1>
           <p class="mt-1 mb-0 text-sm text-n-slate-11">
-            Organiza las conversaciones por etiqueta.
+            Organiza las conversaciones abiertas y cerradas por etiqueta.
           </p>
         </div>
 
@@ -402,38 +486,39 @@ onUnmounted(() => {
         </button>
       </div>
     </header>
-    <nav class="px-8 pt-4 border-b border-n-weak">
-  <div class="flex items-center gap-3 mb-3">
-    <span class="text-sm font-medium text-n-slate-11">
-      Canales
-    </span>
-    <span class="text-xs text-n-slate-10">
-      {{ selectedInboxName }}
-    </span>
-  </div>
 
-  <div class="flex gap-2 pb-4 overflow-x-auto">
-    <button
-      v-for="inbox in inboxFilters"
-      :key="inbox.id"
-      type="button"
-      class="flex items-center flex-shrink-0 gap-2 px-3 py-2 text-sm rounded-lg transition-colors"
-      :class="
-        String(selectedInboxId) === String(inbox.id)
-          ? 'text-n-slate-12 bg-n-alpha-2 font-semibold'
-          : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-1'
-      "
-      @click="selectInbox(inbox.id)"
-    >
-      <span class="text-n-slate-10">
-        {}
-      </span>
-      <span class="max-w-[180px] truncate">
-        {{ inbox.name }}
-      </span>
-    </button>
-  </div>
-</nav>
+    <nav class="px-8 pt-4 border-b border-n-weak">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-sm font-medium text-n-slate-11">
+          Canales
+        </span>
+        <span class="text-xs text-n-slate-10">
+          {{ selectedInboxName }}
+        </span>
+      </div>
+
+      <div class="flex gap-2 pb-4 overflow-x-auto">
+        <button
+          v-for="inbox in inboxFilters"
+          :key="inbox.id"
+          type="button"
+          class="flex items-center flex-shrink-0 gap-2 px-3 py-2 text-sm rounded-lg transition-colors"
+          :class="
+            String(selectedInboxId) === String(inbox.id)
+              ? 'text-n-slate-12 bg-n-alpha-2 font-semibold'
+              : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-1'
+          "
+          @click="selectInbox(inbox.id)"
+        >
+          <span class="text-n-slate-10">
+            {}
+          </span>
+          <span class="max-w-[180px] truncate">
+            {{ inbox.name }}
+          </span>
+        </button>
+      </div>
+    </nav>
 
     <main class="flex-1 overflow-hidden">
       <div v-if="isLoading" class="flex items-center justify-center h-full">
@@ -463,70 +548,97 @@ onUnmounted(() => {
             </div>
 
             <span class="px-2 py-0.5 rounded-md text-xs font-medium text-n-slate-11 bg-n-alpha-2">
-              {{ conversationsByColumn[getColumnKey(column)]?.length || 0 }}
+              {{ columnTotals[getColumnKey(column)] || 0 }}
             </span>
           </header>
 
-          <div class="flex-1 p-3 overflow-y-auto">
+          <div
+            class="flex-1 p-3 overflow-y-auto"
+            @scroll="onColumnScroll($event, column)"
+          >
             <article
-  v-for="conversation in conversationsByColumn[getColumnKey(column)] || []"
-  :key="conversation.id"
-  draggable="true"
-  class="p-3 mb-3 transition-colors border rounded-lg cursor-grab border-n-weak bg-n-solid-1 hover:bg-n-alpha-2 active:cursor-grabbing"
-  :class="{
-    'opacity-50 pointer-events-none': movingConversationId === conversation.id,
-  }"
-  @dragstart="onDragStart(conversation, column)"
-  @dragend="onDragEnd"
->
-  <div class="flex items-start justify-between gap-2">
-    <h3 class="m-0 text-sm font-semibold leading-5 text-n-slate-12 line-clamp-2">
-      {{ getConversationTitle(conversation) }}
-    </h3>
+              v-for="conversation in conversationsByColumn[getColumnKey(column)] || []"
+              :key="conversation.id"
+              draggable="true"
+              class="p-3 mb-3 transition-colors border rounded-lg cursor-grab border-n-weak bg-n-solid-1 hover:bg-n-alpha-2 active:cursor-grabbing"
+              :class="{
+                'opacity-50 pointer-events-none':
+                  movingConversationId === conversation.id,
+              }"
+              @dragstart="onDragStart(conversation, column)"
+              @dragend="onDragEnd"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="m-0 text-sm font-semibold leading-5 text-n-slate-12 line-clamp-2">
+                  {{ getConversationTitle(conversation) }}
+                </h3>
 
-    <span class="flex-shrink-0 text-xs text-n-slate-10">
-      #{{ conversation.id }}
-    </span>
-  </div>
+                <span class="flex-shrink-0 text-xs text-n-slate-10">
+                  #{{ conversation.id }}
+                </span>
+              </div>
 
-  <div class="flex items-center gap-2 mt-2 text-xs text-n-slate-10">
-    <span
-      class="flex-shrink-0 size-2 rounded-sm"
-      :style="{ backgroundColor: getColumnColor(column) }"
-    />
-    <span class="truncate">
-      {{ getInboxName(conversation) }}
-    </span>
-  </div>
+              <div class="flex items-center justify-between gap-2 mt-2">
+                <div class="flex items-center min-w-0 gap-2 text-xs text-n-slate-10">
+                  <span
+                    class="flex-shrink-0 size-2 rounded-sm"
+                    :style="{ backgroundColor: getColumnColor(column) }"
+                  />
+                  <span class="truncate">
+                    {{ getInboxName(conversation) }}
+                  </span>
+                </div>
 
-  <p class="mt-2 mb-0 text-sm leading-5 text-n-slate-11 line-clamp-2">
-    {{ getLastMessage(conversation) }}
-  </p>
+                <span
+                  class="flex-shrink-0 px-2 py-0.5 rounded-md text-[11px] font-semibold"
+                  :class="getStatusClasses(conversation)"
+                >
+                  {{ getStatusLabel(conversation) }}
+                </span>
+              </div>
 
-  <footer class="flex items-center justify-between gap-3 mt-3 text-xs text-n-slate-10">
-    <span class="truncate">
-      {{ getAssigneeName(conversation) }}
-    </span>
-    <span class="flex-shrink-0">
-      {{ formatTimestamp(conversation.timestamp) }}
-    </span>
-  </footer>
+              <p class="mt-2 mb-0 text-sm leading-5 text-n-slate-11 line-clamp-2">
+                {{ getLastMessage(conversation) }}
+              </p>
 
-  <button
-    type="button"
-    class="w-full h-8 mt-3 rounded-md text-xs font-semibold text-white transition-opacity hover:opacity-90"
-    :style="{ backgroundColor: getColumnColor(column) }"
-    @click.stop="openConversation(conversation)"
-  >
-    Ir a la conversación
-  </button>
-</article>
+              <footer class="flex items-center justify-between gap-3 mt-3 text-xs text-n-slate-10">
+                <span class="truncate">
+                  {{ getAssigneeName(conversation) }}
+                </span>
+                <span class="flex-shrink-0">
+                  {{ formatTimestamp(conversation.timestamp) }}
+                </span>
+              </footer>
+
+              <button
+                type="button"
+                class="w-full h-8 mt-3 rounded-md text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                :style="{ backgroundColor: getColumnColor(column) }"
+                @click.stop="openConversation(conversation)"
+              >
+                Ir a la conversación
+              </button>
+            </article>
 
             <div
-              v-if="!(conversationsByColumn[getColumnKey(column)] || []).length"
+              v-if="!(conversationsByColumn[getColumnKey(column)] || []).length && !columnLoading[getColumnKey(column)]"
               class="flex items-center justify-center h-28 rounded-lg border border-dashed border-n-weak text-sm text-n-slate-10"
             >
               Sin conversaciones
+            </div>
+
+            <div
+              v-if="columnLoading[getColumnKey(column)] && !isLoading"
+              class="flex items-center justify-center py-4"
+            >
+              <Spinner class="text-n-brand" />
+            </div>
+
+            <div
+              v-if="!columnHasMore[getColumnKey(column)] && (conversationsByColumn[getColumnKey(column)] || []).length"
+              class="py-3 text-xs text-center text-n-slate-10"
+            >
+              Todas las conversaciones cargadas
             </div>
           </div>
         </section>
