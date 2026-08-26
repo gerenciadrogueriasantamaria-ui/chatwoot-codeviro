@@ -3,7 +3,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   include DateRangeHelper
   include HmacConcern
 
-  before_action :conversation, except: [:index, :meta, :search, :create, :filter]
+  before_action :conversation, except: [:index, :meta, :search, :create, :filter, :kanban]
   before_action :inbox, :contact, :contact_inbox, only: [:create]
 
   ATTACHMENT_RESULTS_PER_PAGE = 100
@@ -59,6 +59,53 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
          CustomExceptions::CustomFilter::InvalidValue => e
     render_could_not_create_error(e.message)
   end
+
+  def kanban
+  authorize Current.account, :show?
+
+  per_page = [[params[:per_page].to_i, 1].max, 100].min
+  page = [params[:page].to_i, 1].max
+  column = params[:column].presence
+  inbox_id = params[:inbox_id].presence
+
+  visible_label_titles = Current.account.labels
+                                      .where(show_on_sidebar: true)
+                                      .pluck(:title)
+
+  conversations = Current.account.conversations
+                                 .includes(:assignee, :inbox, { contact: { avatar_attachment: :blob } }, :taggings)
+                                 .where(status: [:open, :resolved])
+                                 .order(last_activity_at: :desc)
+
+  conversations = conversations.where(inbox_id: inbox_id) if inbox_id.present?
+
+  conversations =
+    if column == '__unlabeled__'
+      if visible_label_titles.present?
+        conversations.where(
+          'conversations.cached_label_list IS NULL OR conversations.cached_label_list = ? OR NOT (conversations.cached_label_list && ARRAY[?]::varchar[])',
+          '',
+          visible_label_titles
+        )
+      else
+        conversations
+      end
+    elsif visible_label_titles.include?(column)
+      conversations.tagged_with(column, on: :labels)
+    else
+      conversations.none
+    end
+
+  total = conversations.count
+  records = conversations.page(page).per(per_page)
+
+  render json: {
+    payload: records.map(&:push_event_data),
+    total: total,
+    page: page,
+    per_page: per_page
+  }
+end
 
   def mute
     @conversation.mute!
