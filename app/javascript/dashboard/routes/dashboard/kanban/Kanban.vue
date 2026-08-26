@@ -540,14 +540,15 @@ onUnmounted(() => {
   <fluent-icon
     icon="search"
     size="16"
-    class="absolute text-n-slate-10 left-3 top-2.5"
+    class="absolute text-n-slate-10 left-3 top-[10px] pointer-events-none"
   />
   <input
     v-model="searchQuery"
     type="search"
-    class="w-full h-9 pl-9 pr-3 text-sm border rounded-lg outline-none text-n-slate-12 bg-n-alpha-1 border-n-weak placeholder:text-n-slate-10 focus:border-n-brand"
+    class="w-full h-9 py-0 pl-10 pr-3 text-sm leading-9 border rounded-lg outline-none text-n-slate-12 bg-n-alpha-1 border-n-weak placeholder:text-n-slate-10 focus:border-n-brand"
     placeholder="Buscar por nombre o celular"
   />
+</div>
 </div>
     </nav>
 
