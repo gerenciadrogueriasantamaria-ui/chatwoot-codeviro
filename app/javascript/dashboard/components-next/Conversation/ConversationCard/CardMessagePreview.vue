@@ -42,7 +42,7 @@ const unreadMessagesCount = computed(() => {
 
 <template>
   <div class="flex items-end w-full gap-2 pb-1">
-    <p class="w-full mb-0 text-sm leading-7 text-n-slate-12 line-clamp-2">
+    <div class="w-full" />
       {{ lastNonActivityMessageContent }}
     </p>
     <div class="flex items-center flex-shrink-0 gap-2 pb-2">
