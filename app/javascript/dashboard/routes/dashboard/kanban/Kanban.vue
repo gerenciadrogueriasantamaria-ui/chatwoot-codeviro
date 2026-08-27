@@ -634,7 +634,7 @@ onUnmounted(() => {
   class="mt-2 mb-0 text-xs text-n-slate-10 truncate"
 >
   {{ getContactPhone(conversation) }}
-</p>
+              </p>
 
               <p class="mt-2 mb-0 text-sm leading-5 text-n-slate-11 line-clamp-2">
                 {{ getLastMessage(conversation) }}
