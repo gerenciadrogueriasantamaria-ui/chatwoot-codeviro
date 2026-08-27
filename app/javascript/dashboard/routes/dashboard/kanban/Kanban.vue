@@ -15,7 +15,6 @@ const UNLABELED_COLUMN = {
   isUnlabeled: true,
 };
 
-const REFRESH_INTERVAL_MS = 8000;
 const PAGE_SIZE = 100;
 const LOAD_MORE_OFFSET = 120;
 
@@ -34,7 +33,6 @@ const isLoading = ref(false);
 const movingConversationId = ref(null);
 const draggedConversation = ref(null);
 const draggedFromColumn = ref(null);
-const refreshTimer = ref(null);
 const isRefreshingSilently = ref(false);
 const selectedInboxId = ref('all');
 const searchQuery = ref('');
@@ -286,23 +284,6 @@ const refreshBoardSilently = () => {
   fetchBoard({ silent: true });
 };
 
-const startAutoRefresh = () => {
-  stopAutoRefresh();
-
-  refreshTimer.value = window.setInterval(() => {
-    if (document.hidden) return;
-
-    refreshBoardSilently();
-  }, REFRESH_INTERVAL_MS);
-};
-
-const stopAutoRefresh = () => {
-  if (!refreshTimer.value) return;
-
-  window.clearInterval(refreshTimer.value);
-  refreshTimer.value = null;
-};
-
 const onWindowFocus = () => {
   refreshBoardSilently();
 };
@@ -466,14 +447,12 @@ watch(searchQuery, () => {
 
 onMounted(() => {
   fetchBoard();
-  startAutoRefresh();
 
   window.addEventListener('focus', onWindowFocus);
   document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onUnmounted(() => {
-  stopAutoRefresh();
   clearTimeout(searchTimer);
 
   window.removeEventListener('focus', onWindowFocus);
