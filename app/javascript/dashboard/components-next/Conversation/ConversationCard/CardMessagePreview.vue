@@ -43,8 +43,6 @@ const unreadMessagesCount = computed(() => {
 <template>
   <div class="flex items-end w-full gap-2 pb-1">
     <div class="w-full" />
-      {{ lastNonActivityMessageContent }}
-    </p>
     <div class="flex items-center flex-shrink-0 gap-2 pb-2">
       <Avatar
         v-if="assignee.name"
