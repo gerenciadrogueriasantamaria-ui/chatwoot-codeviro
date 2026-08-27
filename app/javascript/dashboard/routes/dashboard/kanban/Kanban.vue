@@ -537,7 +537,7 @@ onUnmounted(() => {
   </button>
 </div>
 
-<div class="flex items-center w-full max-w-sm h-9 px-3 mb-4 rounded-lg bg-n-alpha-2">
+<div class="flex items-center w-full max-w-sm h-9 px-3 mt-4 mb-4 rounded-lg bg-n-alpha-2">
   <fluent-icon
     icon="search"
     size="16"
