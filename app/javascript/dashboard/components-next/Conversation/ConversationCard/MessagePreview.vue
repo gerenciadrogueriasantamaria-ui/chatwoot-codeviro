@@ -100,57 +100,6 @@ const isMessageSticker = computed(() => {
       />
     </template>
 
-    <span
-      class="min-w-0 text-body-main"
-      :class="multiLine ? 'line-clamp-2' : 'truncate'"
-    >
-      <!-- Case for previous and conversation conversation card -->
-      <template v-if="showMessageType && multiLine">
-        <Icon
-          v-if="isMessagePrivate"
-          icon="i-lucide-lock-keyhole"
-          class="inline-block align-middle size-3.5 ltr:mr-1 rtl:ml-1"
-        />
-        <Icon
-          v-else-if="messageByAgent"
-          icon="i-lucide-undo-2"
-          class="inline-block align-middle size-3.5 ltr:mr-1 rtl:ml-1"
-        />
-        <Icon
-          v-else-if="isMessageAnActivity"
-          icon="i-lucide-info"
-          class="inline-block align-middle size-3.5 ltr:mr-1 rtl:ml-1"
-        />
-      </template>
-      <span
-        v-if="message.content && isMessageSticker"
-        class="inline-grid grid-flow-col auto-cols-max items-center gap-1"
-      >
-        <Icon icon="i-lucide-image" class="size-3.5" />
-        {{ $t('CHAT_LIST.ATTACHMENTS.image.CONTENT') }}
-      </span>
-
-      <template v-else-if="message.content">
-        {{ parsedLastMessage }}
-      </template>
-
-      <span
-        v-else-if="message.attachments"
-        class="inline-block align-middle truncate"
-      >
-        <Icon
-          v-if="attachmentIcon && showMessageType"
-          :icon="attachmentIcon"
-          class="inline-block align-middle size-3.5 ltr:mr-1 rtl:ml-1"
-        />
-        <span class="inline-block align-middle">
-          {{ $t(attachmentMessageContent) }}
-        </span>
-      </span>
-
-      <template v-else>
-        {{ defaultEmptyMessage || $t('CHAT_LIST.NO_CONTENT') }}
-      </template>
-    </span>
+    <span class="min-w-0 text-body-main" />
   </div>
 </template>
