@@ -61,9 +61,7 @@ defineExpose({
 <template>
   <div class="flex flex-col w-full gap-1">
     <div class="flex items-center justify-between w-full gap-2 py-1 h-7">
-      <p class="mb-0 text-sm leading-7 text-n-slate-12 line-clamp-1">
-        {{ lastNonActivityMessageContent }}
-      </p>
+      <div class="w-full" />
 
       <div
         v-if="unreadMessagesCount > 0"
