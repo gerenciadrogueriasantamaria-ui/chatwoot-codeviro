@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useStore } from 'vuex';
 import { getLastMessage } from 'dashboard/helper/conversationHelper';
 import Avatar from 'next/avatar/Avatar.vue';
 import MessagePreview from './MessagePreview.vue';
@@ -33,6 +34,13 @@ const emit = defineEmits([
 ]);
 
 const hovered = ref(false);
+
+const store = useStore();
+
+const currentRole = computed(() => store.getters.getCurrentRole);
+const canViewMessagePreview = computed(
+  () => currentRole.value === 'administrator'
+);
 
 const unreadCount = computed(() => props.chat.unread_count);
 const hasUnread = computed(() => unreadCount.value > 0);
@@ -174,7 +182,38 @@ watch(
       >
         {{ currentContact.name }}
       </h4>
-      <div class="h-1 mx-2" />
+      <template v-if="canViewMessagePreview">
+  <VoiceCallStatus
+    v-if="voiceCallData.status"
+    key="voice-status-row"
+    :status="voiceCallData.status"
+    :direction="voiceCallData.direction"
+    :message-preview-class="messagePreviewClass"
+  />
+  <MessagePreview
+    v-else-if="lastMessageInChat"
+    key="message-preview"
+    :message="lastMessageInChat"
+    class="my-0 mx-2 leading-6 h-6 flex-1 min-w-0 text-sm"
+    :class="messagePreviewClass"
+  />
+  <p
+    v-else
+    key="no-messages"
+    class="text-n-slate-11 text-sm my-0 mx-2 leading-6 h-6 flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+    :class="messagePreviewClass"
+  >
+    <fluent-icon
+      size="16"
+      class="-mt-0.5 align-middle inline-block text-n-slate-10"
+      icon="info"
+    />
+    <span class="mx-0.5">
+      {{ $t(`CHAT_LIST.NO_MESSAGES`) }}
+    </span>
+  </p>
+</template>
+<div v-else class="h-1 mx-2" />
       <div
         class="absolute flex flex-col ltr:right-3 rtl:left-3"
         :class="showMetaSection ? 'top-8' : 'top-4'"
